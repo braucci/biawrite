@@ -176,6 +176,7 @@ const n4 = await aspetto();
 verifica(n3.notte && !n4.notte, '«come il dispositivo» segue il giorno e la notte del sistema, anche mentre l\'app è aperta', { n3: n3.notte, n4: n4.notte });
 await impostazioni(() => p.selectOption('#tema', 'notte'));
 await p.reload();
+await p.waitForSelector('#note .cartella', { timeout: 8000 });
 const primaDelDisegno = await p.evaluate(() => { const s = document.querySelector('head script[src="tema.js"]'); return !!s && !s.defer && !s.async && s.type !== 'module'; });
 verifica((await aspetto()).notte && primaDelDisegno, 'la scelta resta, e il tema è deciso prima di disegnare la pagina (nessun lampo bianco)');
 

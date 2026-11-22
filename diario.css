@@ -1,0 +1,268 @@
+/* BiaWrite — diario.css
+   Il cockpit del diario alimentare: fogli chiari sul tavolo, grafici su carta, uno strumento a
+   lancetta per le calorie del giorno. I colori dei dati sono scelti e verificati per essere
+   distinguibili anche da chi non vede bene i colori; nessun significato è affidato al solo colore
+   (accanto c'è sempre un segno o una scritta).
+   © B. Raucci — licenza MIT */
+
+#diario, .raccoglitore {
+  --d1: #2A78D6; --d2: #EB6834; --d3: #1BAF7A;                       /* serie: proteine, carboidrati, grassi */
+  --d-buono: #0CA30C; --d-avviso: #FAB219; --d-serio: #EC835A; --d-critico: #D03B3B;
+  --d-griglia: #E3E7E3; --d-base: #BCC5C3; --d-pista: rgba(var(--ombra), .09);
+}
+.notte #diario, .notte .raccoglitore {
+  --d1: #3987E5; --d2: #D95926; --d3: #199E70;
+  --d-griglia: #252D2F; --d-base: #3B4649; --d-pista: rgba(255, 255, 255, .09);
+}
+
+#diario { display: none; flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  padding: 10px max(12px, env(safe-area-inset-right)) calc(40px + env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); }
+[data-vista="diario"] #diario { display: block; }
+[data-vista="diario"] :is(#marchio, #cerca, #importa, #impostazioni, #copia, #altro, #bacheca, #editor, #nuova) { display: none; }
+[data-vista="diario"] #indietro { display: grid; }
+[data-vista="diario"] #luogo { display: block; }
+[data-vista="diario"] #stato { margin-left: auto; }
+
+.dz { max-width: 1180px; margin: 0 auto; font-variant-numeric: tabular-nums; }
+.dz-testa { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 14px; padding: 2px 4px 12px; }
+.dz-fonte { margin: 0; flex: 1 1 14rem; color: var(--tenue); font-size: .88rem; }
+.dz-avvisi { font-size: .85rem; color: var(--tenue); }
+.dz-sola { font-size: .76rem; color: var(--tenue); padding: 2px 9px; border-radius: 10px; box-shadow: inset 0 0 0 1px var(--filo); white-space: nowrap; }
+.dz-avvisi ul { margin: 6px 0 0; padding-left: 1.2em; }
+.dz-griglia { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 900px) {
+  .dz-griglia { grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 18px; }
+  .dz-andamento { grid-column: 1 / span 8; grid-row: 1; } .dz-indici { grid-column: 1 / span 8; grid-row: 2; }
+  .dz-peso { grid-column: 9 / span 4; grid-row: 1 / span 2; }
+  .dz-scheda { grid-column: span 12; }
+  .dz-cal { grid-column: span 4; align-self: start; position: sticky; top: 0; } .dz-giorno { grid-column: span 8; }
+}
+.dz-foglio {
+  background: var(--grana), var(--foglio); border-radius: 3px; padding: 16px 18px 18px; min-width: 0;
+  box-shadow: 0 1px 1px rgba(var(--ombra), .16), 0 10px 22px -12px rgba(var(--ombra), .42);
+}
+.dz-foglio h2 { margin: 0 0 10px; font: italic 600 1.35rem/1.1 var(--scrittura); letter-spacing: -.01em; }
+.dz-foglio h2 small { font: .8rem var(--comandi); font-style: normal; color: var(--tenue); letter-spacing: 0; margin-left: 6px; }
+.dz-foglio h3 { margin: 20px 0 8px; font: 600 .82rem var(--comandi); color: var(--tenue); }
+.dz-foglio-testa { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
+.dz-foglio-testa h2 { margin: 0; }
+.dz-piccolo { margin: 8px 0 0; color: var(--tenue); font-size: .84rem; }
+.dz code { font: .88em var(--fissa); background: rgba(var(--ombra), .07); padding: .05em .3em; border-radius: 2px; }
+.dz-benvenuto { max-width: 34rem; margin: 6vh auto 0; }
+.dz-benvenuto p { margin: 0 0 12px; }
+
+/* periodo */
+.dz-filtri { display: inline-flex; border-radius: 16px; box-shadow: inset 0 0 0 1px var(--filo); overflow: hidden; }
+.dz-filtri button { height: 30px; padding: 0 11px; font-size: .82rem; color: var(--tenue); }
+.dz-filtri button + button { box-shadow: -1px 0 0 var(--filo); }
+.dz-filtri button[aria-pressed="true"] { background: rgba(var(--ombra), .08); color: var(--inchiostro); font-weight: 600; }
+.notte .dz-filtri button[aria-pressed="true"] { background: rgba(255, 255, 255, .1); }
+
+/* grafici */
+.dz-grafico { width: 100%; overflow: hidden; }
+.dz-svg { display: block; max-width: 100%; font-family: var(--comandi); }
+.dz-svg .gr { stroke: var(--d-griglia); stroke-width: 1; }
+.dz-svg .base { stroke: var(--d-base); stroke-width: 1; }
+.dz-svg text, .dz-strumento text { font-size: 11px; fill: var(--tenue); }
+.dz-svg .as.forte, .dz-svg .va { fill: var(--inchiostro); font-weight: 700; }
+.dz-svg .va { font-size: 12px; }
+.dz-svg .mese { font-size: 11px; }
+.dz-svg .et, .dz-strumento .et { fill: var(--inchiostro); font-size: 11px; }
+.dz-svg .rif { fill: none; stroke: var(--inchiostro); stroke-width: 1; opacity: .55; }
+.dz-svg .rif.tdee { opacity: .3; }
+.dz-svg .scelta { fill: rgba(var(--ombra), .07); }
+.notte .dz-svg .scelta { fill: rgba(255, 255, 255, .08); }
+.dz-svg .ba { fill: var(--d1); }
+.dz-svg .ba.corso { fill: var(--d1); opacity: .38; }
+.dz-svg .ba.oltre { fill: var(--d-serio); }
+.dz-svg .ba.surplus { fill: var(--d-critico); }
+.dz-svg .segno.oltre { fill: var(--d-serio); } .dz-svg .segno.surplus { fill: var(--d-critico); }
+.dz-svg .mm { fill: none; stroke: var(--inchiostro); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.dz-svg .mm-anello { fill: none; stroke: var(--foglio); stroke-width: 5; stroke-linejoin: round; stroke-linecap: round; }
+.dz-svg .pe { fill: none; stroke: var(--d1); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.dz-svg .pu { fill: var(--d1); stroke: var(--foglio); stroke-width: 2; }
+.dz-svg .piano { stroke: var(--tenue); stroke-width: 1.5; opacity: .7; }
+.dz-svg .tocco { fill: transparent; cursor: pointer; outline-offset: -2px; }
+.dz-svg circle.tocco { cursor: default; }
+.dz-leg { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 6px 0 2px; font-size: .8rem; color: var(--tenue); }
+.dz-leg span { display: inline-flex; align-items: center; gap: 6px; }
+.dz-leg .ch { display: inline-block; font-style: normal; }
+.dz-leg .ch.ba { width: 9px; height: 12px; border-radius: 3px 3px 0 0; background: var(--d1); }
+.dz-leg .ch.ba.corso { opacity: .38; }
+.dz-leg .ch.tr { color: var(--d-serio); font-size: .8rem; line-height: 1; }
+.dz-leg .ch.li { width: 16px; height: 2px; background: var(--inchiostro); }
+
+.dz-fumetto {
+  position: fixed; z-index: 30; pointer-events: none; display: flex; flex-direction: column; gap: 1px; padding: 8px 11px; border-radius: 6px;
+  background: var(--inchiostro); color: var(--foglio); font-size: .8rem; line-height: 1.3; box-shadow: 0 6px 18px rgba(0, 0, 0, .28); max-width: 15rem;
+}
+.dz-fumetto b { font-size: 1rem; }
+.dz-fumetto .s { opacity: .8; }
+
+/* tessere */
+.dz-tessere { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px 22px; }
+.dz-tessera { display: flex; flex-direction: column; gap: 1px; min-width: 0; padding-left: 11px; border-left: 2px solid var(--d-base); }
+.dz-tessera[data-stato="ok"] { border-left-color: var(--d-buono); }
+.dz-tessera[data-stato="sotto"], .dz-tessera[data-stato="sopra"] { border-left-color: var(--d-serio); }
+.dz-tessera .e, .dz-riga-quote .e { font-size: .8rem; color: var(--tenue); }
+.dz-tessera .v { font-size: 1.55rem; font-weight: 650; line-height: 1.15; letter-spacing: -.01em; }
+.dz-tessera .v small { font-size: .8rem; font-weight: 400; color: var(--tenue); letter-spacing: 0; }
+.dz-tessera .n { font-size: .8rem; color: var(--tenue); }
+.dz-riga-quote { margin-top: 18px; display: grid; gap: 6px; max-width: 34rem; }
+
+/* misuratori e barra a segmenti */
+.dz-mis { margin-bottom: 14px; }
+.dz-mis .r { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.dz-mis .e { font-size: .86rem; color: var(--tenue); }
+.dz-mis .v { font-weight: 650; }
+.dz-mis .pista { position: relative; height: 8px; border-radius: 4px; background: var(--d-pista); margin: 5px 0 4px; overflow: hidden; }
+.dz-mis .pista i { position: absolute; top: 0; bottom: 0; }
+.dz-mis .zona { background: color-mix(in srgb, var(--d-buono) 26%, transparent); }
+.dz-mis .pieno { left: 0; border-radius: 4px; background: var(--d1); }
+.dz-mis[data-stato="ok"] .pieno { background: var(--d-buono); }
+.dz-mis[data-stato="sotto"] .pieno, .dz-mis[data-stato="sopra"] .pieno { background: var(--d-serio); }
+.dz-mis .n, .dz-mis .estremi { font-size: .8rem; color: var(--tenue); }
+.dz-mis .estremi { display: flex; justify-content: space-between; }
+.dz-quote .seg { display: flex; gap: 2px; height: 26px; }
+.dz-quote .seg i { min-width: 3px; border-radius: 4px; display: flex; align-items: center; padding-left: 7px; font: 600 .78rem var(--comandi); color: #FFF; overflow: hidden; white-space: nowrap; }
+.q-p { background: var(--d1); } .q-c { background: var(--d2); } .q-g { background: var(--d3); }
+.dz-quote .leg { display: flex; flex-wrap: wrap; gap: 3px 14px; margin-top: 6px; font-size: .8rem; color: var(--tenue); }
+.dz-quote .leg span { display: inline-flex; align-items: center; gap: 5px; }
+.dz-quote .leg i { width: 9px; height: 9px; border-radius: 2px; }
+.dz-quote .leg b { color: var(--inchiostro); font-weight: 600; }
+
+/* peso */
+.dz-lettura { margin: 0; font-size: .95rem; color: var(--tenue); }
+.dz-lettura b { font-size: 2.3rem; font-weight: 650; letter-spacing: -.02em; color: var(--inchiostro); line-height: 1; }
+.dz-peso-testa { margin-bottom: 10px; } .dz-peso-testa .dz-piccolo { margin-top: 2px; }
+.dz-peso-testa .dz-piccolo b { color: var(--inchiostro); }
+.dz-elenco, .dz-fatti { margin: 10px 0 0; }
+.dz-elenco div { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-top: 1px solid var(--d-griglia); font-size: .9rem; }
+.dz-elenco dt { color: var(--tenue); } .dz-elenco dd { margin: 0; text-align: right; font-weight: 600; }
+.dz-elenco small, .dz-fatti small { font-weight: 400; color: var(--tenue); }
+
+/* calendario */
+.dz-cal-testa { display: flex; align-items: center; justify-content: space-between; margin: -6px -8px 6px; }
+.dz-cal-testa h2 { margin: 0; font-size: 1.2rem; }
+.dz-cal-griglia { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
+.dz-cal-griglia .gs { text-align: center; font-size: .72rem; color: var(--tenue); padding-bottom: 3px; }
+.gc { aspect-ratio: 1 / 1.08; min-height: 40px; border-radius: 7px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; line-height: 1.1; }
+.gc b { font-weight: 500; font-size: .88rem; }
+.gc.nessuno b { color: var(--tenue); opacity: .55; font-weight: 400; }
+.gc i { font-style: normal; font-size: .6rem; line-height: 1; }
+.gc small { font-size: .62rem; color: var(--tenue); }
+button.gc { background: rgba(var(--ombra), .045); }
+.notte button.gc { background: rgba(255, 255, 255, .06); }
+button.gc:hover { background: rgba(var(--ombra), .11); }
+.notte button.gc:hover { background: rgba(255, 255, 255, .13); }
+button.gc b { font-weight: 700; }
+.gc.ok i, .dz-cal-leg .ok { color: var(--d-buono); }
+.gc.oltre i, .dz-cal-leg .oltre { color: var(--d-serio); } .gc.surplus i { color: var(--d-critico); }
+.gc.corso i, .dz-cal-leg .corso { color: var(--d1); }
+.gc.scelto { background: var(--inchiostro); color: var(--foglio); }
+.gc.scelto:hover { background: var(--inchiostro); }
+.gc.scelto small { color: inherit; opacity: .8; }
+.gc.oggi b { text-decoration: underline; text-underline-offset: 3px; }
+.dz-cal-leg { display: flex; flex-wrap: wrap; gap: 2px 12px; margin: 10px 0 0; font-size: .78rem; color: var(--tenue); }
+.dz-cal-leg i { font-style: normal; font-size: .7rem; }
+
+/* il giorno */
+.dz-g-testa { display: flex; align-items: center; gap: 2px; flex-wrap: wrap; margin: -6px -8px 8px; }
+.dz-g-testa h2 { margin: 0 2px; font-size: clamp(1.02rem, 4.4vw, 1.3rem); flex: 0 1 auto; min-width: 0; }
+.dz-g-testa .icona { flex: none; }
+.dz-g-testa h2:focus { outline: none; }
+.dz-timbro {
+  margin-left: auto; margin-right: 8px; padding: 3px 9px 2px; border: 1.5px solid currentColor; border-radius: 4px; rotate: -2deg;
+  font: 700 .74rem var(--comandi); letter-spacing: .04em; color: var(--blu); opacity: .85;
+}
+.dz-timbro.corso { color: var(--tenue); border-style: dashed; }
+.dz-g-alto { display: grid; gap: 14px 30px; grid-template-columns: minmax(0, 1fr); align-items: center; }
+@media (min-width: 620px) { .dz-g-alto { grid-template-columns: minmax(250px, 330px) minmax(0, 1fr); } }
+.dz-quadrante { text-align: center; }
+.dz-strumento { display: block; width: 100%; max-width: 340px; margin: 0 auto; font-family: var(--comandi); overflow: visible; }
+.dz-strumento .arco { fill: none; stroke-width: 13; }
+.dz-strumento .arco.buono { stroke: var(--d-buono); } .dz-strumento .arco.avviso { stroke: var(--d-avviso); }
+.dz-strumento .arco.critico { stroke: var(--d-critico); } .dz-strumento .arco.neutro { stroke: var(--d-base); }
+.dz-strumento .tacca { stroke: var(--tenue); stroke-width: 1.2; }
+.dz-strumento .ago { stroke: var(--inchiostro); stroke-width: 3; stroke-linecap: round; }
+.dz-strumento .ago-ombra { stroke: rgba(var(--ombra), .22); stroke-width: 3; stroke-linecap: round; }
+.dz-strumento .perno { fill: var(--inchiostro); stroke: var(--foglio); stroke-width: 2; }
+.dz-quadrante .dz-lettura { margin-top: 6px; }
+.dz-esito { margin: 4px 0 0; font-size: .9rem; color: var(--tenue); }
+.dz-esito b { color: var(--inchiostro); }
+.dz-esito i { font-style: normal; font-size: .9rem; }
+.dz-esito.ok i { color: var(--d-buono); } .dz-esito.oltre i { color: var(--d-serio); } .dz-esito.surplus i { color: var(--d-critico); } .dz-esito.corso i { color: var(--d1); }
+.dz-g-macro .dz-quote { margin-top: 2px; }
+.dz-fatti { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 22px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--d-griglia); }
+.dz-fatti dt { font-size: .8rem; color: var(--tenue); } .dz-fatti dd { margin: 0; font-weight: 650; font-size: 1.05rem; }
+.dz-fatti small { display: block; font-size: .78rem; }
+
+.dz-pasti { display: grid; gap: 12px; }
+.dz-pasto { border-top: 1px solid var(--d-griglia); padding-top: 10px; }
+.dz-pasto header { display: flex; align-items: baseline; gap: 10px; }
+.dz-pasto h4 { margin: 0; font: italic 600 1.08rem var(--scrittura); }
+.dz-pasto time { font-size: .8rem; color: var(--tenue); }
+.dz-pasto .quota { flex: 1; align-self: center; height: 4px; border-radius: 2px; background: var(--d-pista); min-width: 20px; }
+.dz-pasto .quota i { display: block; height: 100%; border-radius: 2px; background: var(--d1); }
+.dz-pasto .k { text-align: right; white-space: nowrap; }
+.dz-pasto header .k small { font-weight: 400; color: var(--tenue); }
+.dz-pasto table { width: 100%; border-collapse: collapse; margin-top: 4px; font-size: .9rem; }
+.dz-pasto td { padding: 3px 0; vertical-align: top; }
+.dz-pasto td.q { color: var(--tenue); padding: 3px 12px; text-align: right; width: 42%; }
+.dz-pasto td.k { width: 3.2em; }
+.dz-pasto sup { color: var(--tenue); margin-left: 1px; }
+.dz-pasto .mac { display: flex; flex-wrap: wrap; gap: 2px 14px; margin: 6px 0 0; font-size: .8rem; color: var(--tenue); }
+.dz-pasto .mac b { color: var(--inchiostro); font-weight: 600; }
+
+.dz-nota { margin-top: 8px; }
+.dz-nota > summary { cursor: pointer; font-size: .84rem; color: var(--tenue); padding: 3px 0; width: fit-content; }
+.dz-nota.grande { margin-top: 0; border-top: 1px solid var(--d-griglia); }
+.dz-giorno > .dz-nota.grande { margin-top: 18px; }
+.dz-nota.grande > summary { font: 600 .92rem var(--comandi); color: var(--inchiostro); padding: 10px 0; width: auto; }
+.dz-prosa { font-size: .9rem; line-height: 1.5; max-width: 62rem; overflow-wrap: anywhere; }
+.dz-prosa p { margin: 0 0 8px; } .dz-prosa ul, .dz-prosa ol { margin: 0 0 8px; padding-left: 1.25em; } .dz-prosa li { margin: 2px 0; }
+.dz-scorri { overflow-x: auto; }
+.dz-tab { border-collapse: collapse; font-size: .86rem; width: 100%; margin: 6px 0; }
+.dz-tab th { text-align: left; font-weight: 600; color: var(--tenue); font-size: .78rem; padding: 4px 10px 4px 0; border-bottom: 1px solid var(--d-base); white-space: nowrap; }
+.dz-tab td { padding: 5px 10px 5px 0; border-bottom: 1px solid var(--d-griglia); white-space: nowrap; }
+.dz-tab .k { text-align: right; }
+
+/* ------------------------------------------------------------------ la cartella nella bacheca:
+   una cartellina da ambulatorio, con il foglio dei grafici che spunta e l'etichetta incollata */
+.griglia.moduli { padding-bottom: 0; }
+.raccoglitore {
+  position: relative; display: block; width: 100%; aspect-ratio: 5 / 4; perspective: 650px; text-align: left; color: #20302F;
+  rotate: -.6deg; filter: drop-shadow(0 1px 1px rgba(var(--ombra), .22)) drop-shadow(0 9px 9px rgba(var(--ombra), .16));
+  transition: rotate .5s var(--molla), translate .5s var(--molla), scale .35s var(--molla);
+}
+.rc-retro { position: absolute; inset: 0; border-radius: 5px; background: var(--grana), linear-gradient(180deg, #9FC3BD, #8FB6B0); clip-path: polygon(0 10%, 56% 10%, 60% 0, 97% 0, 100% 10%, 100% 100%, 0 100%); }
+.rc-foglio {
+  position: absolute; left: 8%; right: 12%; top: 4%; height: 60%; background-color: #FDFDFB; rotate: -1.2deg; box-shadow: 0 1px 2px rgba(0, 0, 0, .18);
+  background-image: linear-gradient(#DCE5E4 1px, transparent 1px), linear-gradient(90deg, #DCE5E4 1px, transparent 1px); background-size: 8px 8px;
+  transition: translate .55s var(--molla);
+}
+.rc-foglio svg { position: absolute; left: 6%; top: 7%; width: 88%; height: 34%; }
+.rc-foglio rect { fill: #2A78D6; } .rc-foglio rect.c { opacity: .4; } .rc-foglio line { stroke: #20302F; stroke-width: .8; opacity: .55; vector-effect: non-scaling-stroke; }
+.rc-fronte {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 72%; padding: 10px; border-radius: 4px 4px 6px 6px; display: flex; align-items: flex-end;
+  background: var(--grana), linear-gradient(172deg, #CDE3DF 0%, #BDD8D3 55%, #AFCEC8 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55), 0 -3px 8px rgba(10, 40, 40, .12);
+  transform-origin: 50% 100%; transition: transform .55s var(--molla);
+}
+.rc-etichetta { display: flex; flex-direction: column; gap: 1px; width: 100%; padding: 6px 9px 5px; background: #FBFAF4; border-radius: 2px; box-shadow: 0 1px 1px rgba(0, 0, 0, .14); }
+.rc-etichetta b { font: 700 1.12rem/1.05 var(--mano); }
+.rc-etichetta small { font: .72rem var(--comandi); color: rgba(32, 48, 47, .72); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.raccoglitore:hover, .raccoglitore:focus-visible { translate: 0 -4px; z-index: 2; rotate: 0deg; }
+.raccoglitore:hover .rc-fronte, .raccoglitore:focus-visible .rc-fronte { transform: rotateX(-17deg); }
+.raccoglitore:hover .rc-foglio, .raccoglitore:focus-visible .rc-foglio { translate: 0 -9px; }
+.raccoglitore:active { scale: .985; }
+.raccoglitore.apre .rc-fronte { transform: rotateX(-46deg); transition-duration: .3s; }
+.raccoglitore.apre .rc-foglio { translate: 0 -20px; transition-duration: .3s; }
+.notte .raccoglitore { filter: brightness(.74) saturate(.8) drop-shadow(0 1px 1px rgba(0, 0, 0, .5)) drop-shadow(0 9px 9px rgba(0, 0, 0, .45)); }
+.anima .raccoglitore { animation: posa .6s var(--morbido) backwards; animation-delay: calc(min(var(--i, 0), 22) * 26ms); }
+[data-vista="diario"] #diario .dz { animation: sale .32s var(--morbido); }
+
+@media print {
+  #diario { overflow: visible; } .dz-testa button, .dz-filtri { display: none; }
+  .dz-foglio { box-shadow: none; break-inside: avoid; }
+}

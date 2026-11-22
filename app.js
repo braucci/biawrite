@@ -8,7 +8,7 @@
 (() => {
   'use strict';
 
-  const VERSIONE = '1.6.0';
+  const VERSIONE = '1.7.1';
   const CFG = Object.assign({ repository: 'biawrite-note', cartella: 'note' }, window.BIAWRITE_CONFIG || {});
   const COLORI = ['giallo', 'arancio', 'rosa', 'lilla', 'azzurro', 'verde', 'carta', 'grigio'];
   const NOMI_COLORI = { giallo: 'Giallo', arancio: 'Arancio', rosa: 'Rosa', lilla: 'Lilla', azzurro: 'Azzurro', verde: 'Verde', carta: 'Bianco', grigio: 'Grigio' };
@@ -16,6 +16,8 @@
   const QUIETE_MS = 3000, MASSIMA_ATTESA_MS = 30000;          // invio dopo 3 s di quiete, comunque ogni 30 s
 
   const Core = window.BiaCore, Arch = window.BiaArchivio, Imp = window.BiaImporta;
+  const Cru = window.BiaCruscotto || null;                       // modulo «diario alimentare» (facoltativo)
+  const CARTELLA_DIARIO = String(CFG.diario || 'diario'), PERCORSO_DIARIO = CARTELLA_DIARIO + '/diario-alimentare.md';
   const { esc, escA } = Core;
   const $ = (s, r) => (r || document).querySelector(s);
   const app = $('#app'), elNote = $('#note'), elVuoto = $('#vuoto'), elCerca = $('#cerca'), elStato = $('#stato');
@@ -141,8 +143,11 @@
   const collegato = () => S.mode === 'github';
   const daInviare = n => !n.deleted && (n.dirty || n.metaDirty || !n.path) && !(!n.path && !n.content.trim() && n.autoName);
   let allegatiInAttesa = 0, ricevendo = 0;
-  const inSospeso = () => allegatiInAttesa > 0 || [...note.values()].some(n => (n.deleted && n.path) || daInviare(n));
-  const pendenti = () => { let k = allegatiInAttesa; for (const n of note.values()) if ((n.deleted && n.path) || daInviare(n)) k++; return k; };
+  const copiaDiario = () => S.copiaDiario !== 'no';               // la copia del diario nel repository privato (mai il file d'origine)
+  const diarioDaInviare = () => !!Cru && copiaDiario() && Cru.stato().sporco;
+  const conDiario = () => !!Cru && S.diario !== 'no';
+  const inSospeso = () => allegatiInAttesa > 0 || diarioDaInviare() || [...note.values()].some(n => (n.deleted && n.path) || daInviare(n));
+  const pendenti = () => { let k = allegatiInAttesa + (diarioDaInviare() ? 1 : 0); for (const n of note.values()) if ((n.deleted && n.path) || daInviare(n)) k++; return k; };
 
   function anteprima(n) {
     const c = memo.get(n);
@@ -251,6 +256,7 @@
       const mesi = [...gruppi.keys()].sort().reverse();
       let k = 0;
       if (fissate.length) html += '<div class="griglia fissate">' + fissate.map(n => scheda(n, k++)).join('') + '</div>';
+      if (conDiario()) html += '<div class="griglia cartelle moduli">' + Cru.cartellaHtml(k++) + '</div>';
       let anno = null;
       for (const m of mesi) {
         const a = m.slice(0, 4);
@@ -272,7 +278,8 @@
       const fissate = elenco.filter(n => n.pinned).length;
       const tutti = elenco.length;
       if (osservatore) elenco.splice(limite);
-      html = '<div class="griglia">' + elenco.map((n, i) => (i === fissate && fissate ? '<div class="stacco-fissate" aria-hidden="true"></div>' : '') +
+      html = (modo === 'tutte' && conDiario() ? '<div class="griglia cartelle moduli">' + Cru.cartellaHtml(0) + '</div>' : '') +
+        '<div class="griglia">' + elenco.map((n, i) => (i === fissate && fissate ? '<div class="stacco-fissate" aria-hidden="true"></div>' : '') +
         scheda(n, i, modo === 'cartella' ? 'creata' : 'modificata')).join('') +
         (tutti > elenco.length ? '<div class="ancora" aria-hidden="true"></div>' : '') + '</div>';
       quante = elenco.length;
@@ -299,6 +306,23 @@
     };
     if (el && !ridotto()) { el.classList.add('apre'); setTimeout(vai, 230); } else vai();
   }
+  /* Il diario alimentare: una cartella fissa della bacheca che si apre sul cockpit. */
+  function mostraDiario() {
+    if (!Cru) return;
+    app.dataset.vista = 'diario'; app.dataset.cartella = '';
+    $('#luogo').textContent = 'Diario alimentare';
+    Cru.apri($('#diario'));
+  }
+  function apriDiario(el) {
+    const vai = () => { scrollRadice = $('#bacheca').scrollTop; history.pushState({ diario: true }, ''); mostraDiario(); };
+    if (el && !ridotto()) { el.classList.add('apre'); setTimeout(vai, 230); } else vai();
+  }
+  function lasciaDiario() {
+    Cru.chiudi();
+    app.dataset.vista = 'bacheca';
+    disegna({ anima: true });
+    $('#bacheca').scrollTop = scrollRadice;
+  }
   function vaiACartella(m, sostituisci) {
     if (!perMesi() || m === cartellaAperta) return;
     if (!cartellaAperta) scrollRadice = $('#bacheca').scrollTop;
@@ -308,6 +332,8 @@
   }
 
   elNote.addEventListener('click', e => {
+    const rc = e.target.closest('.raccoglitore');
+    if (rc) { apriDiario(rc); return; }
     const c = e.target.closest('.cartella');
     if (c) { apriCartella(c.dataset.mese, c); return; }
     const el = e.target.closest('.nota');
@@ -460,6 +486,8 @@
   $('#indietro').addEventListener('click', () => history.back());
   window.addEventListener('popstate', e => {
     if (aperta) { chiudi(); return; }
+    if (e.state && e.state.diario) { mostraDiario(); return; }
+    if (vista() === 'diario') lasciaDiario();
     const c = (e.state && e.state.cartella) || null;
     if (c !== cartellaAperta) {
       cartellaAperta = c; limite = PASSO;
@@ -781,7 +809,7 @@
   let chiave = '';            // chiave d'accesso in chiaro: solo in memoria
   let verificato = false;     // in questa sessione si è già controllato che il repository sia privato
   function preparaArchivio() {
-    arch = collegato() && S.repo ? Arch.crea({ repo: S.repo, chiave: () => chiave, cartella: CFG.cartella, ramo: S.ramo }) : null;
+    arch = collegato() && S.repo ? Arch.crea({ repo: S.repo, chiave: () => chiave, cartella: CFG.cartella, ramo: S.ramo, altre: [CARTELLA_DIARIO] }) : null;
     verificato = false;
   }
 
@@ -960,6 +988,25 @@
     return 'BiaWrite: aggiorna ' + fatti.length + ' note';
   }
 
+  /* Il diario viaggia nello stesso repository privato, in una cartella sua (fuori da quella delle note):
+   * ciò che è stato caricato qui da un file sale; altrimenti vale la copia del repository. */
+  async function sincronizzaDiario(ist) {
+    if (!Cru || !copiaDiario()) return null;
+    const d = Cru.stato(), remoto = ist.altri && ist.altri.get(PERCORSO_DIARIO);
+    if (d.sporco && d.testo) {
+      if (remoto !== d.sha) {
+        const nuovo = await arch.scrivi(ist, [{ percorso: PERCORSO_DIARIO, contenuto: d.testo }], ist.indice, 'BiaWrite: aggiorna il diario alimentare');
+        await Cru.segnaInviato();
+        return nuovo;
+      }
+      await Cru.segnaInviato();
+    } else if (remoto && remoto !== d.sha) {
+      try { await Cru.imposta(await arch.leggi(remoto), { origine: 'remoto', sha: remoto }); }
+      catch (e) { if (e instanceof Arch.Errore) throw e; console.warn('diario', e); }           // file non leggibile come diario: si lascia stare
+    }
+    return null;
+  }
+
   async function giro() {
     if (!verificato) {
       const info = await arch.verifica();
@@ -973,6 +1020,8 @@
       ultimaIst = ist;
       await applica(ist);
       try {
+        const rd = await sincronizzaDiario(ist);
+        if (rd) { ultimaIst = rd; continue; }
         const ra = await inviaAllegati(ist);                                   // prima le immagini, poi le note che le citano
         if (ra) { ultimaIst = ra.nuovo; continue; }
         const r = await invia(ist);
@@ -1175,6 +1224,7 @@
   });
   async function azzera() {
     await DB.svuota(); note.clear(); aperta = null; chiave = ''; maestra = null;
+    if (Cru) await Cru.svuota();
     try { localStorage.removeItem(K_BOZZA); } catch (e) { /* niente */ }
     S = {}; salvaS();
     location.reload();
@@ -1534,6 +1584,9 @@
       '<div class="sfondi" role="radiogroup" aria-label="Sfondo">' + [['salvia', 'Salvia', '#E2EAE0'], ['cielo', 'Cielo', '#DFE8F0'], ['cipria', 'Cipria', '#EFE3E2'], ['lavanda', 'Lavanda', '#E6E2EF'], ['menta', 'Menta', '#DBEBE5'], ['quadretti', 'Quadretti', '#E7ECEC']]
         .map(([v, t, c]) => '<button role="radio" data-v="' + v + '" title="' + t + '" aria-label="' + t + '" aria-checked="' + ((S.sfondo || 'salvia') === v) + '" style="--s:' + c + '"></button>').join('') + '</div>' +
       '<div class="fila"><select class="campo" id="ordine" aria-label="Bacheca"><option value="mesi">Bacheca in cartelle, una per mese</option><option value="tutte">Bacheca con tutte le note insieme</option></select></div>' +
+      (Cru ? '<div class="fila"><select class="campo" id="mostra-diario" aria-label="Diario alimentare"><option value="si">Cartella «Diario alimentare» in bacheca</option><option value="no">Senza la cartella del diario alimentare</option></select></div>' +
+        '<div class="fila"><select class="campo" id="copia-diario" aria-label="Copia del diario"><option value="si">Diario: copia nel repository privato, per gli altri dispositivi</option><option value="no">Diario: solo su questo dispositivo, nessuna copia</option></select></div>' +
+        '<p class="nota-bene">Il file del diario è sempre e solo letto: BiaWrite non lo può modificare.</p>' : '') +
       '<h3>Scrittura</h3>' +
       '<div class="fila"><select class="campo" id="spazio" aria-label="Spazio fra i capoversi">' +
         '<option value="stretto">Capoversi appena staccati</option><option value="nessuno">Capoversi senza spazio, come a macchina</option>' +
@@ -1552,6 +1605,8 @@
     });
     $('#ordine', c).value = perMesi() ? 'mesi' : 'tutte';
     $('#ordine', c).onchange = e => { S.bacheca = e.target.value; salvaS(); cartellaAperta = null; history.replaceState({ bacheca: true }, ''); limite = PASSO; disegna({ anima: true }); };
+    if (Cru) { $('#copia-diario', c).value = copiaDiario() ? 'si' : 'no'; $('#copia-diario', c).onchange = e => { S.copiaDiario = e.target.value; salvaS(); aggiornaStato(); if (copiaDiario() && collegato()) sync(); }; }
+    if (Cru) { $('#mostra-diario', c).value = S.diario === 'no' ? 'no' : 'si'; $('#mostra-diario', c).onchange = e => { S.diario = e.target.value; salvaS(); disegna(); }; }
     $('#fisso', c).value = S.fisso || 'txt';
     $('#fisso', c).onchange = e => { S.fisso = e.target.value; salvaS(); disegna(); };
     $('#spazio', c).value = S.spazio || 'stretto';
@@ -1589,6 +1644,7 @@
   function entra() {
     app.dataset.vista = 'bacheca';
     disegna();
+    if (history.state && history.state.diario && conDiario()) mostraDiario();
     aggiornaStato();
     if (collegato()) sync();
   }
@@ -1602,7 +1658,7 @@
     if (e.key === 'Escape') {
       if (!menu.hidden) { chiudiMenu(); return; }
       if (document.querySelector('dialog[open]')) return;
-      if (aperta) history.back();
+      if (aperta || vista() === 'diario') history.back();
     }
   });
 
@@ -1616,7 +1672,10 @@
       navigator.serviceWorker.register('sw.js').catch(() => {});
     }
     const st = history.state;                                                   // ricaricando dentro una cartella, vi si resta
-    if (st && st.cartella && perMesi()) cartellaAperta = st.cartella; else history.replaceState({ bacheca: true }, '');
+    const nelDiario = !!(st && st.diario && Cru);
+    if (st && st.cartella && perMesi()) cartellaAperta = st.cartella; else if (!nelDiario) history.replaceState({ bacheca: true }, '');
+    // il diario si carica intanto che si leggono le note: l'avvio non aspetta un'operazione in più
+    const prontoDiario = Cru ? Cru.avvia({ avviso, sha: Arch.shaBlob, alCambio: c => { if (c.daInviare) { aggiornaStato(); sync(); } else if (vista() === 'bacheca' && menu.hidden) disegna(); } }).catch(() => {}) : null;
     let tutte = [];
     try { tutte = (await DB.tutte()) || []; } catch (e) { console.warn('archivio', e); }
     tutte.forEach(n => {
@@ -1642,6 +1701,7 @@
       }
     } catch (e) { /* bozza illeggibile */ }
     try { allegatiInAttesa = ((await DB.tutte('allegati')) || []).filter(x => !x.inviato).length; } catch (e) { allegatiInAttesa = 0; }
+    await prontoDiario;
     if (!S.lock) chiave = S.token || '';
     preparaArchivio();
     carta.dataset.spazio = S.spazio || 'stretto';

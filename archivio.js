@@ -48,6 +48,7 @@
     const repo = String(opz.repo || '');
     const chiave = () => (typeof opz.chiave === 'function' ? opz.chiave() : opz.chiave) || '';
     const cartella = String(opz.cartella || 'note').replace(/^\/+|\/+$/g, '');
+    const altre = (opz.altre || []).map(x => String(x).replace(/^\/+|\/+$/g, '') + '/');   // altre cartelle da tenere d'occhio (moduli)
     const fetchFn = opz.fetch || root.fetch.bind(root);
     let ramo = opz.ramo || null;
     let cache = null;                                   // ultima istantanea letta o scritta
@@ -108,7 +109,7 @@
     /* Carica un file (immagine, allegato) come oggetto git; restituisce il suo sha. */
     const caricaBlob = async bytes => (await chiama('POST', R + '/git/blobs', { content: b64(bytes), encoding: 'base64' })).sha;
 
-    const vuota = () => ({ commit: null, albero: null, file: new Map(), allegati: new Map(), indice: { formato: 1, note: {} }, indiceSha: null });
+    const vuota = () => ({ commit: null, albero: null, file: new Map(), allegati: new Map(), altri: new Map(), indice: { formato: 1, note: {} }, indiceSha: null });
 
     /* Istantanea del ramo: commit, albero, file della cartella delle note, indice dei metadati.
      * Se il ramo non è cambiato dall'ultima volta costa una sola richiesta. */
@@ -125,10 +126,12 @@
       if (cache && cache.commit === commit) return cache;
       const c = await chiama('GET', R + '/git/commits/' + commit);
       const albero = await chiama('GET', R + '/git/trees/' + c.tree.sha + '?recursive=1');
-      const file = new Map(), allegati = new Map();
+      const file = new Map(), allegati = new Map(), altri = new Map();
       let indiceSha = null;
       for (const v of albero.tree || []) {
-        if (v.type !== 'blob' || !v.path.startsWith(cartella + '/')) continue;
+        if (v.type !== 'blob') continue;
+        if (altre.some(a => v.path.startsWith(a))) { altri.set(v.path, v.sha); continue; }
+        if (!v.path.startsWith(cartella + '/')) continue;
         const nome = v.path.slice(cartella.length + 1);
         if (nome.startsWith('allegati/')) { allegati.set(v.path, v.sha); continue; }
         if (nome.includes('/')) continue;                                    // solo la cartella, non le sottocartelle
@@ -143,7 +146,7 @@
           catch (e) { if (!(e instanceof SyntaxError)) throw e; }                 // indice illeggibile: si ricostruisce
         }
       }
-      return (cache = { commit, albero: c.tree.sha, file, allegati, indice, indiceSha });
+      return (cache = { commit, albero: c.tree.sha, file, allegati, altri, indice, indiceSha });
     }
 
     /* Prepara l'archivio al collegamento: se il repository è vuoto crea la cartella con l'indice,
@@ -181,14 +184,14 @@
       const t = await chiama('POST', R + '/git/trees', { base_tree: base.albero, tree: voci });
       const c = await chiama('POST', R + '/git/commits', { message: messaggio, tree: t.sha, parents: [base.commit] });
       await chiama('PATCH', R + '/git/refs/heads/' + segmenti(ramo), { sha: c.sha, force: false });
-      const file = new Map(base.file), allegati = new Map(base.allegati || []);
+      const file = new Map(base.file), allegati = new Map(base.allegati || []), altri = new Map(base.altri || []);
       const allegato = p => p.startsWith(cartella + '/allegati/');
       for (const m of modifiche) {
-        const dove = allegato(m.percorso) ? allegati : file;
+        const dove = altre.some(a => m.percorso.startsWith(a)) ? altri : allegato(m.percorso) ? allegati : file;
         if (m.elimina) dove.delete(m.percorso);
         else dove.set(m.percorso, m.sha || await shaBlob(m.contenuto));
       }
-      cache = { commit: c.sha, albero: t.sha, file, allegati, indice, indiceSha: await shaBlob(testoIndice) };
+      cache = { commit: c.sha, albero: t.sha, file, allegati, altri, indice, indiceSha: await shaBlob(testoIndice) };
       return cache;
     }
 

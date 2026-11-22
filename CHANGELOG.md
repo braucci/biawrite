@@ -1,5 +1,25 @@
 # Registro delle modifiche
 
+## 1.7.1 — 22 novembre 2026
+
+- **Diario in sola lettura, dichiarato e verificato**: il file si apre esplicitamente in modalità di
+  lettura e il permesso di scrittura non viene mai chiesto; il cockpit lo dice («sola lettura») e i
+  comandi si chiamano «Leggi il file» / «Rileggi il file». Nuove prove automatiche: file identico dopo
+  l'uso, nessuna richiesta di scrittura, nessuna API di scrittura nel modulo.
+- La copia del diario nel repository privato si può escludere (*Impostazioni → Aspetto*).
+
+## 1.7.0 — 22 novembre 2026
+
+- **Diario alimentare**, modulo nuovo: una cartella fissa in bacheca che si apre su un cockpit
+  ricavato dal file `diario-alimentare.md` (mai modificato). Andamento delle calorie con soglia,
+  dispendio e media mobile; peso, BMI, percorso verso l'obiettivo e misure; indicatori sui giorni
+  chiusi (media, deficit medio e accumulato, giorni entro la soglia, proteine, fibra, passi, quota di
+  energia dai macronutrienti); calendario dei giorni registrati; per ogni giorno lo strumento delle
+  calorie, gli obiettivi, il bilancio, i pasti con alimenti e stime, le note.
+- Il diario si aggiorna scegliendo il file; in Chrome e Edge il file viene ricordato e riletto da solo.
+  Con GitHub collegato viaggia nel repository privato, in `diario/`, e arriva sugli altri dispositivi.
+- Giorno, notte, telefono e stampa; colori dei grafici verificati per chi non distingue i colori.
+
 ## 1.6.0 — 22 novembre 2026
 
 - **Cartelle dei mesi**: la bacheca raccoglie le note in una cartella per mese, sotto un titolo per

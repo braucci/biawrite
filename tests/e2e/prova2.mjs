@@ -127,7 +127,9 @@ const grezzo = await p.evaluate(() => localStorage.getItem('biawrite.impostazion
 const S = JSON.parse(grezzo);
 verifica(!grezzo.includes(CHIAVE) && !S.token && S.tokenCifrato && S.lock && S.lock.kPin, 'nessuna traccia della chiave in chiaro');
 await p.reload();
-verifica(await p.isVisible('#blocco'), 'alla riapertura serve il PIN');
+const nascosta = await p.evaluate(() => document.querySelector('#app').dataset.vista === 'avvio' || !document.querySelector('#blocco').hidden);
+await p.waitForSelector('#blocco', { state: 'visible', timeout: 4000 }).catch(() => {});
+verifica(nascosta && await p.isVisible('#blocco'), 'alla riapertura serve il PIN (e prima di chiederlo non si vede nulla)');
 await p.fill('#campo-pin', '1111'); await p.keyboard.press('Enter'); await pausa(900);
 verifica((await p.textContent('#errore-pin')) === 'PIN errato.', 'PIN errato respinto');
 await p.fill('#campo-pin', '2468'); await p.keyboard.press('Enter'); await pausa(1500);

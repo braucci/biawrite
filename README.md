@@ -24,6 +24,9 @@ Si pubblica su GitHub Pages e parla soltanto con GitHub.
   nell'editor di WordPress (o in una mail, in Word…).
 - **Importazione** delle vecchie note: file `.md`, `.txt`, `.html`, cartelle intere, archivi `.zip` e
   **backup di Bear** (`.bear2bk`), con date, puntine e immagini.
+- **Diario alimentare** (modulo facoltativo): una cartella fissa della bacheca che si apre su un
+  cockpit — calorie nel tempo, peso, indicatori, calendario e dettaglio di ogni giorno — ricavato dal
+  file `diario-alimentare.md`, che non viene mai modificato.
 - **Blocco del dispositivo** con PIN e, dove il browser lo consente, impronta o volto. Con il blocco
   la chiave di GitHub è conservata cifrata.
 - **Installabile** sulla schermata Home di telefono e tablet; si apre anche senza rete.
@@ -132,6 +135,65 @@ non si duplicano; quelle che nel frattempo hai modificato in BiaWrite restano co
 presente con lo stesso testo (per esempio importata prima come `.txt`) viene aggiornata alla versione
 di Bear, se lasci spuntata la casella relativa.
 
+## Il diario alimentare
+
+In bacheca, prima degli anni, c'è la cartella **Diario alimentare**. La prima volta chiede il file
+`diario-alimentare.md`; da lì in poi mostra:
+
+- **Calorie**: una barra per giorno, con la linea della soglia e quella del dispendio stimato; dopo
+  qualche giorno anche la media mobile su 7 giorni. Periodo a scelta: 30 giorni, 90, tutto.
+- **Peso**: ultimo valore, variazione dall'inizio, percorso verso l'obiettivo, BMI, chili da perdere,
+  data d'arrivo al ritmo del piano e al ritmo del deficit medio, grafico con la linea del piano, misure
+  registrate (peso, vita, collo).
+- **In sintesi** (sui soli giorni chiusi): media giornaliera, deficit medio e accumulato con
+  l'equivalente teorico in grasso, giorni entro la soglia, proteine e fibra medie rispetto
+  all'obiettivo, passi, quota di energia da proteine, carboidrati e grassi.
+- **Calendario**: si scelgono i giorni registrati; il segno dice com'è andata (● entro la soglia,
+  ▲ oltre, ○ in corso).
+- **Il giorno**: lo strumento a lancetta delle calorie rispetto a soglia e dispendio, proteine e fibra
+  rispetto all'obiettivo, bilancio stimato, passi, acqua, pasti con ora, alimenti, quantità e calorie
+  (l'asterisco segna le stime), note del giorno per intero.
+- **Scheda**: le sezioni generali del diario (dati di riferimento, attività, monitoraggio, prodotti).
+
+**Sola lettura.** BiaWrite non può modificare il diario, e non per semplice scelta di interfaccia:
+il file viene aperto o con il campo di scelta dei file (che consegna al browser una copia in sola
+lettura) o con il permesso di sola lettura del browser; il permesso di scrittura non viene mai
+chiesto, quindi è il browser stesso a impedire ogni modifica. Nel cockpit non c'è alcun campo in cui
+scrivere: si può soltanto rileggere il file e scegliere periodo, mese e giorno.
+
+**Rileggere.** Il diario si scrive altrove; BiaWrite lo legge. «Leggi il file» fa scegliere il
+file (su iPhone e iPad: *Scegli file → iCloud Drive*). In Chrome e in Edge, sul computer, il file
+scelto viene ricordato: da allora il diario si rilegge da solo ogni volta che si apre la cartella o si
+torna sulla scheda, e il pulsante diventa «Rileggi il file». Safari e Firefox non lo consentono: lì si
+sceglie il file ogni volta. Basta farlo su un dispositivo: con GitHub collegato il diario sale nel
+repository privato (`diario/diario-alimentare.md`, fuori dalla cartella delle note) e gli altri
+dispositivi lo ricevono alla prima sincronizzazione. Vale anche il contrario: un file messo in quella
+posizione dal sito di GitHub o da un altro programma arriva nell'app. Quella nel repository è una
+copia identica di ciò che è stato letto, non il diario: il file d'origine non riceve mai nulla
+indietro. Chi non vuole nemmeno la copia sceglie *Impostazioni → Aspetto → Diario: solo su questo
+dispositivo*; allora il diario si legge su ogni dispositivo dal file.
+
+**Riservatezza.** Il diario non entra mai nel repository pubblico dell'app: sta sul dispositivo e nel
+repository privato delle note. Come le note, la copia locale non è cifrata.
+
+**Che cosa serve nel file.** Il lettore cerca la struttura, non la forma esatta:
+
+- un giorno è un titolo che comincia con una data (`### 22 novembre 2026`, anche `22/11/2026`), meglio
+  se seguito da stato e totale: `— GIORNATA CHIUSA: 1571 kcal (soglia 1800, …)` oppure
+  `— IN CORSO: progressivo ≈ 318 kcal (…)`;
+- un pasto è un sottotitolo (`##### Pranzo (≈ 13:00)`) seguito da una tabella con una colonna `kcal`;
+  la riga `Totale` è facoltativa;
+- i macronutrienti si leggono da frasi come `carboidrati ≈ 54 g, proteine ≈ 13 g, grassi ≈ 5 g,
+  fibra ≈ 7 g`, nel riepilogo del giorno e sotto ogni pasto;
+- statura, peso, peso obiettivo, ritmo, BMR, TDEE, target e proteine dalla sezione
+  `## Dati di riferimento (gg/mm/aaaa)`;
+- le **misure**: una riga `Peso: 107,4 kg` (anche `Circonferenza vita: 104 cm`, `collo 42 cm`) nel
+  giorno della pesata, oppure una tabella con le colonne `Data`, `Peso`, `Vita`, `Collo`;
+- `Passi del giorno …: ≈ 3900` e `Acqua: 500 ml …` nel giorno.
+
+Se i conti del file non tornano (le righe di un pasto non danno il totale scritto), BiaWrite lo
+segnala in alto, senza fermarsi. La cartella si può nascondere da *Impostazioni → Aspetto*.
+
 ## Incollare in WordPress
 
 Il pulsante **Copia** mette negli appunti l'intera nota come testo formattato: grassetto, corsivo,
@@ -185,8 +247,9 @@ allineamento o un sottolineato non arrivano, si riapplicano lì con un clic.
 
 ## Collaudo
 
-- `tests/test.html`, aperto nel browser, verifica il motore di conversione (42 prove).
-- `tests/e2e/` contiene il collaudo dell'intera app con un GitHub simulato (214 verifiche);
+- `tests/test.html`, aperto nel browser, verifica il motore di conversione (42 prove);
+  `tests/test-diario.html` il lettore del diario alimentare (34 prove).
+- `tests/e2e/` contiene il collaudo dell'intera app con un GitHub simulato (279 verifiche);
   le istruzioni sono in `README-progetto.md`.
 
 ## Licenza

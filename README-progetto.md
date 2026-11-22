@@ -10,6 +10,8 @@
 | `archivio.js` | **archivio**: lettura e scrittura del repository GitHub (API REST «Git Database»). Nessuna interfaccia |
 | `importa.js` | **importazione**: lettura di file, cartelle e archivi `.zip`, decodifica dei testi. Nessuna interfaccia |
 | `app.js` | **applicazione**: bacheca, editor, archivio locale, sincronizzazione, blocco, importazione |
+| `diario.js` | **diario alimentare, lettore**: dal Markdown del diario al modello (giorni, pasti, macronutrienti, misure) e agli indicatori. Nessuna interfaccia |
+| `cruscotto.js`, `diario.css` | **diario alimentare, cockpit**: grafici SVG, calendario, giorno; copia locale del file e file ricordato |
 | `config.js` | nome proposto per il repository delle note e cartella; **nessun segreto** |
 | `sw.js` | service worker: cache dei file dell'app per l'uso senza rete |
 | `manifest.webmanifest`, `icon*` | installazione sulla schermata Home |
@@ -203,16 +205,74 @@ tutte le animazioni sono spente.
 foglietto: di serie solo i `.txt`, a scelta tutte o nessuna. Nell'editor Markdown il tasto **M**
 alterna `<pre>` e `<p>` (`formatBlock`); il motore scrive `<pre>` come blocco recintato da backtick.
 
+## Diario alimentare
+
+Modulo facoltativo: se `diario.js` e `cruscotto.js` non sono caricati, `app.js` funziona come prima.
+
+**Flusso dei dati.** Una sola fonte: il file `diario-alimentare.md`, scritto altrove. BiaWrite non lo
+modifica e non conserva dati derivati: ogni grandezza del cockpit è ricalcolata dal testo a ogni
+apertura (`BiaDiario.leggi` → `BiaDiario.indicatori`). Così un file corretto a mano corregge tutto.
+
+```
+file scelto / file ricordato ──► copia locale (IndexedDB «biawrite-diario») ──► repository privato
+                                                     ▲                          diario/diario-alimentare.md
+                 altri dispositivi ◄─────────────────┴──────────────────────────────────┘
+```
+
+- La copia locale sta in un archivio IndexedDB suo, separato da quello delle note.
+- `archivio.js` accetta `altre: ['diario']`: l'istantanea (che legge comunque tutto l'albero del
+  repository) riporta anche i file di quelle cartelle in `altri`, senza richieste in più. In `giro()`
+  di `app.js`, `sincronizzaDiario` invia il diario se è stato caricato qui da un file (un commit
+  «BiaWrite: aggiorna il diario alimentare»), altrimenti scarica la versione del repository quando il
+  suo sha è diverso da quello locale. Se due dispositivi caricano file diversi, vale l'ultimo a
+  sincronizzare: sono comunque copie dello stesso file.
+- **File ricordato**: dove esiste `showOpenFilePicker` (Chrome, Edge), il riferimento al file è
+  conservato in IndexedDB e riletto all'apertura della cartella e al ritorno sulla scheda, se il
+  permesso è già concesso; «Rileggi il file» lo chiede quando serve. Altrove si usa `<input type=file>`.
+
+**Sola lettura, per costruzione.** Il file d'origine non è mai scritto: `<input type=file>` dà un
+oggetto `File` in sola lettura; `showOpenFilePicker` è chiamato con `mode: 'read'` e
+`requestPermission` solo con `{ mode: 'read' }`, sicché `createWritable()` fallirebbe comunque. Nel
+modulo non compare alcuna API di scrittura su file (il collaudo lo verifica sul sorgente e sul file:
+stessi byte e stessa data di modifica dopo l'uso). Il flusso è a senso unico: file → copia locale →
+copia nel repository; nulla torna al file. La copia nel repository si esclude con `S.copiaDiario = 'no'`
+(né invio né ricezione).
+
+**Lettore.** Tollerante per scelta, perché il file è scritto a mano o da un assistente:
+
+- giorno = titolo che comincia con una data (tre forme); stato da «IN CORSO»/«CHIUSA» nel titolo,
+  altrimenti dal confronto con la data di oggi;
+- totale del giorno: dal titolo, altrimenti dalla riga «Totale giornaliero», altrimenti dalla somma dei pasti;
+- pasto = sottotitolo con una tabella che ha una colonna `kcal`; totale dalla riga «Totale» o dalla somma;
+- macronutrienti da frasi (`carboidrati ≈ N g…`); se il riepilogo del giorno manca, somma dei pasti;
+- misure dal riferimento, dalle frasi «N kg il gg/mm/aaaa», dalle tabelle Data/Peso/Vita/Collo, dai giorni;
+- le incongruenze fra righe e totali diventano avvisi, non errori.
+
+**Indicatori.** Sui soli giorni chiusi. Deficit del giorno = TDEE − kcal; massa teorica = deficit
+accumulato / 7700 kcal/kg (valore convenzionale del tessuto adiposo); ritmo = deficit medio × 7 / 7700;
+quota di energia = 4·P, 4·C, 9·G sul loro totale; BMI = peso / statura².
+
+**Grafici.** SVG generati alla larghezza reale del contenitore (si ridisegnano se cambia). Barre al
+più di 24 px con testa arrotondata e base squadrata, griglia sottile e continua, una sola scala.
+Colori dei dati verificati (distanza percettiva anche per chi non distingue i colori, contrasto sul
+foglio chiaro e su quello scuro) con valori propri per la notte; lo stato di un giorno non è mai
+affidato al solo colore (segno ● ▲ ○ e testo). Ogni valore del grafico è raggiungibile anche da
+tastiera, nel fumetto e nella tabella «Tutti i giorni».
+
+**Sicurezza.** Il testo del diario è trattato come dato non fidato: nomi e quantità sono inseriti
+come testo; le note passano dal motore Markdown e poi dal sanificatore di `core.js`.
+
 ## Collaudo
 
-**Motore** — apri `tests/test.html`: 42 prove.
+**Motore** — apri `tests/test.html`: 42 prove. **Lettore del diario** — apri `tests/test-diario.html`
+(oppure `node tests/test-diario.js`): 34 prove.
 
 **Applicazione** — in `tests/e2e/`, con Node e Playwright:
 
 ```sh
 cd tests/e2e
 npm install playwright && npx playwright install chromium
-node prova1.mjs && node prova2.mjs && node prova3.mjs && node prova4.mjs && node prova5.mjs && node prova6.mjs && node prova7.mjs
+node prova1.mjs && node prova2.mjs && node prova3.mjs && node prova4.mjs && node prova5.mjs && node prova6.mjs && node prova7.mjs && node prova8.mjs
 ```
 
 `lib.mjs` contiene un **GitHub simulato** (oggetti git in memoria, ramo con controllo di avanzamento,
@@ -238,6 +298,17 @@ scrittore di archivi zip.
   pastello e quadretti; spaziatura fissa nell'editor e sul foglietto, carattere incluso, tasto M e
   Markdown risultante; macchie (presenti ma non ovunque, sotto il testo, stabili, uguali su due
   dispositivi); movimenti di puntina ed eliminazione, curva a molla, «riduci movimento»; telefono.
+
+- `prova8.mjs` (65 verifiche): il diario alimentare, con un diario inventato (`diario-finto.mjs`) —
+  cartella fissa (posizione, ricerca, bacheca unica, impostazione); file rifiutato se non è un diario;
+  cockpit (giorni letti, medie e deficit contro i dati di partenza, barre e loro stati, soglia e
+  dispendio, periodo, fumetto, peso, misure, tabella); calendario e giorno (strumento, pasti, obiettivi,
+  bilancio, note, frecce, tocco sul grafico, tastiera, giorno in surplus); navigazione (freccia, avanti,
+  ricarica, Esc); repository (file identico in `diario/`, note intatte, messaggio del commit, nessun
+  commit per lo stesso file, secondo dispositivo, aggiornamento dal telefono, note che continuano a
+  salvarsi, file messo da fuori); file ricordato (profilo vero del browser); sola lettura (file identico dopo l'uso, nessun permesso di
+  scrittura chiesto, nessuna API di scrittura nel sorgente, nessun campo nel cockpit); copia su GitHub
+  esclusa e rimessa; file ostile; notte; stampa.
 
 Le prove 1–6 guardano la bacheca «tutte insieme» (`piatta()` in `lib.mjs`); la 7 le cartelle.
 - `prova4.mjs` (17 verifiche): la puntina — ordine in bacheca, ricerca, indice del repository, secondo

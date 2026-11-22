@@ -27,11 +27,16 @@ biawrite-note/            (privato)
 └── note/
     ├── .biawrite.json    indice dei metadati
     ├── Idea per il blog.md
-    └── Lista della spesa.txt
+    ├── Lista della spesa.txt
+    └── allegati/
+        └── 1caf9a3d/     una cartella per nota (dall'identificativo di Bear)
+            └── foto.jpg
 ```
 
-Il titolo di una nota è il nome del suo file. Colore, «titolo automatico» (preso dalla prima riga)
-e data di modifica stanno nell'indice, così il contenuto dei file resta testo puro:
+Il titolo di una nota è il nome del suo file. Colore, «titolo automatico» (preso dalla prima riga),
+data di modifica, data di creazione (`creata`, se diversa), puntina (`"fissata": true`) e, per le note
+importate da Bear, il loro identificativo (`bear`) stanno nell'indice, così il contenuto dei file resta
+testo puro:
 
 ```json
 { "formato": 1,
@@ -118,16 +123,58 @@ per il sanificatore e diventano Markdown. Sono saltati, con il motivo, i file di
 protetti da password o più grandi di 2 MB; ignorati in silenzio gli scarti di sistema (`__MACOSX`,
 file nascosti, `Thumbs.db`). Un doppione è una nota con lo stesso titolo e lo stesso contenuto.
 
+## Importazione da Bear
+
+Un `.bear2bk` è uno zip con un `backup.json` e una cartella `*.textbundle` per nota: `info.json`
+(sotto `net.shinyfrog.bear`: `creationDate`, `modificationDate`, `pinned`, `trashed`, `locked`,
+`uniqueIdentifier`), `text.md`, `assets/`. Lo stesso lettore accetta cartelle `.textbundle` e file
+`.textpack`. Conversione (`testoBear` in `importa.js`):
+
+1. **Classificazione.** Una nota è «tecnica» se contiene LaTeX (`\[`, `$$`, `\begin{`, `\frac`,
+   `\section`…) o se almeno il 40 % delle righe ha segni inequivocabili di codice (`#include`, `def`,
+   `import`, tag HTML a inizio riga, righe di sole parentesi, assegnazioni, CSS, gnuplot). Le note
+   tecniche diventano `.txt` identici all'originale, tolto il `# ` che Bear antepone al titolo.
+2. **A capo.** Fra due righe di testo consecutive si aggiungono due spazi (a capo esplicito); fra blocchi
+   di specie diversa (testo, elenco, citazione, tabella, HTML, linea) una riga vuota; titoli e recinti
+   di codice si delimitano da sé; dentro i recinti nulla cambia. La trasformazione aggiunge solo spazi
+   finali e righe vuote: togliendoli si riottiene l'originale. Proprietà verificata su tutte le 2.373
+   note di un backup reale.
+3. **Sintassi di Bear.** `==x==` → `<mark>x</mark>` fuori dal codice in linea; `[image:ID/nome]` e
+   `[file:ID/nome]` di Bear 1 → collegamenti Markdown a `assets/nome`; gli allegati non citati sono
+   aggiunti in fondo.
+4. **Allegati.** `assets/` diventa `allegati/<id>/`, con `<id>` = primi 8 caratteri dell'identificativo
+   di Bear; i file vanno nel deposito locale «allegati» e poi nel repository come oggetti git
+   (`POST git/blobs`, base64) in commit da al più 40 file, prima delle note.
+
+**Doppioni.** Dentro un backup ogni nota è importata, anche se uguale a un'altra. Una nota già
+presente in BiaWrite corrisponde a una nota di Bear se ne porta l'identificativo; se il testo
+(a meno di spazi e maiuscole) è lo stesso viene proposta di aggiornarla, se è stato modificato in
+BiaWrite resta com'è. Senza identificativo si confronta il testo; ogni nota presente può corrispondere
+a una sola nota importata.
+
+**Nell'editor** le immagini con indirizzo relativo (`allegati/…`) si mostrano da un `blob:` creato dalla
+copia locale (o scaricato una volta dal repository e poi conservato); l'indirizzo vero resta in
+`data-vero` e viene rimesso nel testo a ogni salvataggio. La copia negli appunti le esclude.
+
+**Molte note.** La bacheca disegna 120 foglietti alla volta e aggiunge gli altri scorrendo
+(`IntersectionObserver`); la ricerca aspetta 120 ms; l'importazione scrive in IndexedDB in una sola
+transazione; l'invio va a lotti di 300 note o 1,5 MB; la ricezione usa 8 richieste parallele; lo stato
+mostra quante note mancano. Le richieste che creano contenuti passano per un freno (al più 60 al
+minuto), sotto il limite secondario di GitHub (80 al minuto, 500 all'ora).
+
+Un backup reale di 2.373 note e 26 immagini: lettura ed esame in circa 7 s; 10 commit e 26 oggetti
+per caricare tutto.
+
 ## Collaudo
 
-**Motore** — apri `tests/test.html`: 39 prove.
+**Motore** — apri `tests/test.html`: 42 prove.
 
 **Applicazione** — in `tests/e2e/`, con Node e Playwright:
 
 ```sh
 cd tests/e2e
 npm install playwright && npx playwright install chromium
-node prova1.mjs && node prova2.mjs && node prova3.mjs
+node prova1.mjs && node prova2.mjs && node prova3.mjs && node prova4.mjs && node prova5.mjs && node prova6.mjs
 ```
 
 `lib.mjs` contiene un **GitHub simulato** (oggetti git in memoria, ramo con controllo di avanzamento,
@@ -138,10 +185,18 @@ scrittore di archivi zip.
   volo; numero di commit durante una scrittura lunga; rinomina in un commit; copia; secondo
   dispositivo; conflitto; colori; eliminazione; modifiche fatte dal sito; chiave revocata e
   sostituita; nomi uguali; repository diventato pubblico.
-- `prova2.mjs` (32 verifiche): uso senza GitHub e senza rete; importazione (zip, testo Windows,
+- `prova2.mjs` (34 verifiche): uso senza GitHub e senza rete; importazione (zip, testo Windows,
   HTML, doppioni, file saltati, date); 207 note portate su GitHub a lotti; chiave cifrata con il PIN,
   cambio PIN, blocco tolto; senza rete.
 - `prova3.mjs` (11 verifiche): impronta con un autenticatore virtuale con e senza PRF; trascinamento.
+- `prova5.mjs` (34 verifiche): backup di Bear costruito ad arte — conteggi della finestra, cestino,
+  aggiornamento di una nota già presente, a capo, copie identiche, date (anche incoerenti), codice e
+  LaTeX esatti, evidenziato, immagini (anche di Bear 1 e non citate), editor, secondo dispositivo,
+  reimportazione senza doppioni né nomi cambiati.
+- `prova6.mjs` (7 verifiche): spazio fra i capoversi — il testo non cambia, cambia solo l'aspetto.
+- `prova4.mjs` (17 verifiche): la puntina — ordine in bacheca, ricerca, indice del repository, secondo
+  dispositivo, modifica di una nota fissata, puntina tolta dall'editor, copia, uso senza GitHub.
+  Con `FOTO=1` salva anche le immagini della bacheca.
 
 Per usare un Chrome già installato: `CHROME=/percorso/di/chrome node prova1.mjs`.
 

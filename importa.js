@@ -101,7 +101,7 @@
     const voci = [], scartati = [];
     for (const el of elementi) {
       const f = el.file || el, percorso = el.percorso || f.webkitRelativePath || f.name;
-      if (/\.zip$/i.test(f.name)) {
+      if (/\.(zip|bear2bk|textpack)$/i.test(f.name)) {                // .bear2bk e .textpack sono archivi zip
         try { voci.push(...apriZip(await f.arrayBuffer()).map(x => Object.assign(x, { percorso: f.name + '/' + x.percorso }))); }
         catch (e) { scartati.push({ percorso, motivo: 'archivio illeggibile' }); }
       } else voci.push(daFile(f, percorso));
@@ -109,17 +109,142 @@
     return { voci, scartati };
   }
 
+  /* --------------------------------------------------------- Bear e TextBundle
+   * Un backup di Bear (.bear2bk) è uno zip di cartelle «.textbundle», una per nota:
+   *   info.json   date, puntina, cestino, identificativo (sotto la chiave net.shinyfrog.bear)
+   *   text.md     il testo, la cui prima riga è il titolo
+   *   assets/     le immagini e gli allegati richiamati dal testo come assets/nome
+   */
+
+  /* Note di programmazione o di LaTeX: si conservano come testo esatto, perché lì
+   * contano rientri, barre rovesce, asterischi e trattini bassi. */
+  const SEGNI_CODICE = [
+    /^\s*\\[a-zA-Z]+/, /^\s*#(include|define|ifdef|ifndef|endif|pragma)\b/, /^#!\//,
+    /^\s*(import [\w.]+|from [\w.]+ import|def \w+\(|class \w+[(:{]|function\b|var |let |const |public |private |static |return\b|elif |else\s*[:{]|print\(|printf\(|struct |typedef |void |int \w|float \w|double \w|char \w)/,
+    /^\s*(if|for|while|switch)\s*\(/, /^\s*<\/?[a-zA-Z!][^>]*>/, /^\s*[{}\[\]()]+[;,]?\s*$/,
+    /^\s*[.#]?[\w-]+(\s*[,>]\s*[.#]?[\w-]+)*\s*\{\s*$/, /^\s*[\w-]+\s*:\s*[^;]+;\s*$/, /^\s*(set|unset|plot|splot)\s/, /^\s*%/,
+    /^\s*[\w.]+(\[[^\]]*\])?\s*[-+*/]?=\s*\S/, /^\s*[\w.]+\([^)]*\)\s*$/,
+  ];
+  const LATEX = /\\\[|\$\$|\\begin\{|\\(frac|sqrt|section\*?|subsection\*?|usepackage|documentclass|mathrm|mathbf)\b/;
+  function tecnica(t) {
+    if (LATEX.test(t)) return true;
+    const righe = t.split('\n').slice(1).filter(l => l.trim());                  // la prima riga è il titolo
+    if (righe.length < 3 || righe.filter(l => /^\s*(```|~~~)/.test(l)).length >= 2) return false;
+    let n = 0;
+    for (const l of righe) if (SEGNI_CODICE.some(r => r.test(l)) || (/[;{]\s*$/.test(l) && /[(){}=<>\[\]]/.test(l))) n++;
+    return n / righe.length >= 0.4;
+  }
+
+  /* ==evidenziato== di Bear → <mark>, fuori dal codice */
+  function evidenzia(riga) {
+    return riga.split(/(`+[^`]*`+)/).map((x, k) => (k % 2 ? x : x.replace(/==(?=\S)([^=\n]+?)(?<=\S)==/g, '<mark>$1</mark>'))).join('');
+  }
+
+  /* In Bear ogni a capo va a capo; nel Markdown due righe consecutive si fondono.
+   * Fra due righe di testo si mette un a capo esplicito (due spazi), fra blocchi
+   * di natura diversa una riga vuota. Le righe non cambiano: si aggiungono solo
+   * spazi in fondo e righe vuote, quindi la trasformazione è reversibile. */
+  function specie(l) {
+    if (!l.trim()) return 'vuota';
+    if (/^ {0,3}(`{3,}|~{3,})/.test(l)) return 'recinto';
+    if (/^ {0,3}#{1,6}(\s|$)/.test(l)) return 'titolo';
+    if (/^ {0,3}([-*_])( *\1){2,} *$/.test(l) || /^ {0,3}=+ *$/.test(l)) return 'linea';
+    if (/^\s*>/.test(l)) return 'citazione';
+    if (/^\s*([-*+]|\d{1,9}[.)])(\s|$)/.test(l)) return 'voce';
+    if (/^\s*\|/.test(l)) return 'tabella';
+    if (/^ {0,3}<\/?(?:p|div|h[1-6]|ul|ol|li|blockquote|pre|center|table|hr|figure|section|article)\b[^>]*>/i.test(l)) return 'html';
+    return 'testo';
+  }
+  function righeBear(t) {
+    const r = t.split('\n'), out = [];
+    let recinto = null;
+    for (let i = 0; i < r.length; i++) {
+      let a = r[i];
+      if (recinto) { out.push(a); if (new RegExp('^ {0,3}' + recinto[0] + '{' + recinto.length + ',}\\s*$').test(a)) recinto = null; continue; }
+      const m = a.match(/^ {0,3}(`{3,}|~{3,})/);
+      if (m) { recinto = m[1]; out.push(a); continue; }
+      const sa = specie(a);
+      if (sa !== 'vuota') a = evidenzia(a);
+      const b = i + 1 < r.length ? r[i + 1] : '';
+      const sb = specie(b);
+      if (sa === 'vuota' || sb === 'vuota') { out.push(a); continue; }
+      const contenuto = x => x.replace(/^\s*>\s?/, '').trim();
+      if (sa === 'testo' && sb === 'testo') a = /( {2,}|\\)$/.test(a) && !/\\$/.test(a) ? a : a + '  ';
+      else if (sa === 'citazione' && sb === 'citazione') { if (contenuto(a) && contenuto(b)) a += '  '; }
+      else if (sa === sb && (sa === 'voce' || sa === 'tabella' || sa === 'html')) { /* lo stesso blocco continua */ }
+      else if (sa === 'titolo' || sb === 'titolo' || sb === 'recinto') { /* si delimitano da sé */ }
+      else { out.push(a, ''); continue; }
+      out.push(a);
+    }
+    return out.join('\n');
+  }
+
+  function daBear(t) {
+    t = t.replace(/^﻿/, '').replace(/\r\n?/g, '\n');
+    if (tecnica(t)) return { tipo: 'txt', testo: t.replace(/^# /, '') };          // «# » è il titolo aggiunto da Bear
+    return { tipo: 'md', testo: righeBear(t) };
+  }
+
+  /* Testo finale di una nota di Bear: conversione, vecchie immagini di Bear 1 «[image:ID/nome]»
+   * rese come immagini Markdown, allegati mai citati aggiunti in fondo perché restino visibili. */
+  const codificaNome = n => n.split('/').map(x => encodeURIComponent(x).replace(/\(/g, '%28').replace(/\)/g, '%29')).join('/');
+  const IMMAGINE = /\.(png|jpe?g|gif|webp|svg|heic|bmp|tiff?)$/i;
+  const rimando = n => (IMMAGINE.test(n) ? '![](assets/' + codificaNome(n) + ')' : '[' + n + '](assets/' + codificaNome(n) + ')');
+  function testoBear(grezzo, nomi) {
+    const r = daBear(grezzo);
+    if (r.tipo === 'txt') return r;
+    let x = r.testo.replace(/\[(image|file):[^\]\/\n]*\/([^\]\n]+)\]/g, (m, k, n) => (k === 'image' ? '![](assets/' + codificaNome(n) + ')' : '[' + n + '](assets/' + codificaNome(n) + ')'));
+    const orfani = (nomi || []).filter(n => !x.includes('assets/' + codificaNome(n)) && !x.includes('assets/' + n));
+    if (orfani.length) x = x.replace(/\n*$/, '') + '\n\n' + orfani.map(rimando).join('\n\n') + '\n';
+    return { tipo: 'md', testo: x };
+  }
+
+  async function esaminaBundle(nome, parti) {
+    const testo = parti.get('text.md') || parti.get('text.markdown') || parti.get('text.txt') ||
+      [...parti].find(([k]) => /^text\.[^/]+$/.test(k))?.[1];
+    if (!testo) return { scarto: 'senza testo' };
+    let meta = {};
+    const info = parti.get('info.json');
+    if (info) { try { meta = (JSON.parse(decodifica(await info.leggi())) || {})['net.shinyfrog.bear'] || {}; } catch (e) { meta = {}; } }
+    if (meta.locked || meta.encrypted) return { scarto: 'nota cifrata in Bear' };
+    const grezzo = decodifica(await testo.leggi());
+    const allegati = [...parti].filter(([k]) => k.startsWith('assets/') && k.length > 7).map(([k, v]) => ({ nome: k.slice(7), voce: v }));
+    const { tipo, testo: convertito } = testoBear(grezzo, allegati.map(a => a.nome));
+    const data = Date.parse(meta.modificationDate) || testo.data || 0;
+    return { nota: {
+      titolo: nome.replace(/^.*\//, '').trim() || 'Nota di Bear', tipo, testo: convertito, grezzo, data,
+      creata: Date.parse(meta.creationDate) || data, fissata: !!meta.pinned, cestino: !!meta.trashed,
+      id: String(meta.uniqueIdentifier || '').replace(/[^0-9a-z]/gi, '').slice(0, 8).toLowerCase(), bear: String(meta.uniqueIdentifier || ''),
+      allegati, origine: 'bear', percorso: nome + '.textbundle' } };
+  }
+
   /* --------------------------------------------------------- esame */
   /**
    * Legge le voci e le trasforma in note candidate:
-   * { titolo, tipo: 'md'|'txt', testo, data, origine: 'md'|'txt'|'html', percorso }
+   * { titolo, tipo: 'md'|'txt', testo, data, origine: 'md'|'txt'|'html'|'bear', percorso, [creata, fissata, cestino, allegati, id, grezzo] }
    */
   async function esamina(voci, Core) {
     const pronte = [], scartati = [];
+    // prima le cartelle .textbundle (Bear, Ulysses, iA Writer…): ogni cartella è una nota
+    const pacchi = new Map(), sciolte = [];
     for (const v of voci) {
+      const m = v.percorso.match(/^(.*?)\.textbundle\/(.+)$/i);
+      if (m) { if (!pacchi.has(m[1])) pacchi.set(m[1], new Map()); pacchi.get(m[1]).set(m[2], v); }
+      else sciolte.push(v);
+    }
+    for (const [nome, parti] of pacchi) {
+      try {
+        const r = await esaminaBundle(nome, parti);
+        if (r.scarto) scartati.push({ percorso: nome.replace(/^.*\//, '') + '.textbundle', motivo: r.scarto });
+        else if (!r.nota.testo.trim() && !r.nota.allegati.length) scartati.push({ percorso: r.nota.percorso.replace(/^.*\//, ''), motivo: 'vuoto' });
+        else pronte.push(r.nota);
+      } catch (e) { scartati.push({ percorso: nome + '.textbundle', motivo: 'illeggibile' }); }
+    }
+    for (const v of sciolte) {
       const parti = v.percorso.split('/');
       const nome = parti[parti.length - 1];
       if (!nome || nome.startsWith('.') || parti.includes('__MACOSX') || nome === 'Thumbs.db' || nome === 'desktop.ini') continue;
+      if (pacchi.size && /^(backup|info)\.json$/i.test(nome)) continue;           // indice del backup di Bear
       const m = nome.match(/^(.*)\.([^.]+)$/);
       const ext = m ? m[2].toLowerCase() : '';
       const origine = TIPI[ext];
@@ -141,5 +266,9 @@
     return { pronte, scartati };
   }
 
-  root.BiaImporta = { decodifica, apriZip, daFile, daVoceTrascinata, raccogli, esamina, TIPI };
+  const MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml',
+    heic: 'image/heic', pdf: 'application/pdf', mp3: 'audio/mpeg', m4a: 'audio/mp4', mp4: 'video/mp4', mov: 'video/quicktime' };
+  const mime = nome => MIME[(nome.match(/\.([^.]+)$/) || [])[1]?.toLowerCase()] || 'application/octet-stream';
+
+  root.BiaImporta = { decodifica, apriZip, daFile, daVoceTrascinata, raccogli, esamina, daBear, testoBear, righeBear, tecnica, mime, TIPI };
 })(typeof window !== 'undefined' ? window : globalThis);

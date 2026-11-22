@@ -100,7 +100,11 @@ await p.setInputFiles('#scegli-file', [{ name: 'tante.zip', mimeType: 'applicati
 await p.waitForSelector('#finestra[open]');
 await p.tap('#finestra button[value="ok"]');
 await pausa(600);
-verifica(await p.locator('.nota').count() === 207, 'duecento note in più in bacheca');
+verifica(await p.evaluate(() => BiaWrite.note.size) === 207, 'duecento note in più');
+verifica(await p.locator('.nota').count() === 120 && await p.locator('.ancora').count() === 1, 'la bacheca ne disegna 120 alla volta');
+await p.evaluate(() => { const b = document.querySelector('#bacheca'); b.scrollTop = b.scrollHeight; });
+await finche(async () => (await p.locator('.nota').count()) === 207, 5000);
+verifica(await p.locator('.nota').count() === 207 && await p.locator('.ancora').count() === 0, 'scorrendo arrivano le altre');
 await G.monta(ctx);
 await p.tap('#stato');
 await collega(p, 'biawrite-note', CHIAVE, { pin: true, tocco: true });
@@ -113,8 +117,8 @@ if (await p.isVisible('#finestra[open]')) await p.tap('#finestra-no');
 await finche(() => G.note().size === 207, 30000);
 await attendiOk(p, 20000);
 verifica(G.note().size === 207, 'tutte le note sono nel repository', G.note().size);
-verifica(G.commitFatti <= 3, 'in due commit più la preparazione dell\'archivio', G.commitFatti);
-verifica(G.messaggi().some(m => m === 'BiaWrite: aggiorna 150 note'), 'commit a lotti', G.messaggi());
+verifica(G.commitFatti <= 2, 'in un commit più la preparazione dell\'archivio', G.commitFatti);
+verifica(G.messaggi().some(m => m === 'BiaWrite: aggiorna 207 note'), 'un messaggio leggibile', G.messaggi());
 verifica(G.note().get('note/Lettera a un amico.txt') === 'Perché la città è così bella.\nSeconda riga.\n', 'il testo arriva intatto');
 verifica(G.indice().note['La pellicola scaduta.md'].mod === vecchia.toISOString(), 'la data originale è anche nell\'indice');
 

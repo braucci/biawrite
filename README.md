@@ -10,13 +10,15 @@ Si pubblica su GitHub Pages e parla soltanto con GitHub.
 ## Che cosa fa
 
 - **Bacheca** di foglietti scritti a mano, ognuno attaccato a modo suo, con anteprima, colore e ricerca.
+  Con una **puntina** un foglietto resta sempre in testa, su tutti i dispositivi.
 - **Editor** essenziale: grassetto, corsivo, sottolineato, allineamento (sinistra, centro, destra,
   giustificato), titoli, elenchi, citazioni, collegamenti. Oppure testo semplice, per i `.txt`.
 - **Salvataggio automatico**: ogni modifica va subito nell'archivio del browser e, dopo tre secondi di
   pausa, nel repository. Senza rete si continua a scrivere; alla riconnessione parte tutto da sé.
 - **Copia** con un tocco: tutta la nota negli appunti come testo formattato, pronta da incollare
   nell'editor di WordPress (o in una mail, in Word…).
-- **Importazione** delle vecchie note: file `.md`, `.txt`, `.html`, cartelle intere, archivi `.zip`.
+- **Importazione** delle vecchie note: file `.md`, `.txt`, `.html`, cartelle intere, archivi `.zip` e
+  **backup di Bear** (`.bear2bk`), con date, puntine e immagini.
 - **Blocco del dispositivo** con PIN e, dove il browser lo consente, impronta o volto. Con il blocco
   la chiave di GitHub è conservata cifrata.
 - **Installabile** sulla schermata Home di telefono e tablet; si apre anche senza rete.
@@ -93,7 +95,37 @@ le vecchie note si mettono in ordine di tempo. Le pagine HTML diventano Markdown
 di testo scritti su Windows sono letti con gli accenti giusti. A scelta, i `.txt` possono diventare
 note formattabili.
 
-Le immagini non vengono importate: se una vecchia nota ne richiamava, nel testo resta il richiamo.
+Dai file sciolti le immagini non vengono importate: se una vecchia nota ne richiamava, nel testo resta il
+richiamo. Dai backup di Bear invece arrivano, con il testo che le cita (vedi sotto).
+
+## Importare da Bear
+
+In Bear: *File → Backup Notes…* (sul Mac) produce un file `.bear2bk`. Lo stesso pulsante di
+importazione di BiaWrite lo riconosce e mostra quante note contiene, quante con la puntina, quante
+immagini. Conviene farlo dal computer e lasciare BiaWrite aperta finché lo stato dice «Su GitHub».
+
+Che cosa arriva, e come:
+
+| In Bear | In BiaWrite |
+|---|---|
+| il testo | identico riga per riga: si aggiungono solo spazi a fine riga e righe vuote fra blocchi diversi |
+| ogni a capo va a capo | a capo veri (nel Markdown due righe consecutive si fonderebbero); le righe vuote restano capoversi |
+| il titolo è la prima riga | idem: titolo automatico dalla prima riga, che cambia se cambi la prima riga |
+| date di creazione e di modifica | conservate (nell'indice del repository), anche quando in Bear sono incoerenti |
+| puntina | puntina |
+| `==evidenziato==` | evidenziato |
+| immagini e allegati | nel repository, in `note/allegati/<nota>/`, identici; si vedono nell'editor e sul sito di GitHub |
+| vecchie immagini di Bear 1 `[image:…/nome.jpg]` | immagini Markdown che puntano al file giusto |
+| allegati che la nota non cita | citati in fondo alla nota, perché restino visibili |
+| note di codice o con formule LaTeX | testo esatto, carattere per carattere (rientri, barre rovesce, asterischi) |
+| copie identiche di una stessa nota | importate tutte: in Bear erano note distinte |
+| cestino | escluso, salvo diversa scelta |
+| note vuote | saltate, e la finestra lo dice |
+
+Ogni nota ricorda da quale nota di Bear viene. Se reimporti lo stesso backup, le note già importate
+non si duplicano; quelle che nel frattempo hai modificato in BiaWrite restano come sono. Una nota già
+presente con lo stesso testo (per esempio importata prima come `.txt`) viene aggiornata alla versione
+di Bear, se lasci spuntata la casella relativa.
 
 ## Incollare in WordPress
 
@@ -117,6 +149,11 @@ allineamento o un sottolineato non arrivano, si riapplicano lì con un clic.
 - **Senza blocco** la chiave è conservata in chiaro nel browser: le impostazioni lo dicono.
 - **Due dispositivi sulla stessa nota.** Se una nota viene modificata in due posti prima che si
   sincronizzino, non si perde nulla: l'altra versione viene salvata in una copia «(altra versione …)».
+- **Capoversi.** Ogni Invio apre un capoverso: così arriva in WordPress. Quanto si vedono staccati
+  nell'editor si sceglie in *Impostazioni → Scrittura* (appena staccati, senza spazio, con rientro, ben
+  staccati). Per andare a capo dentro lo stesso capoverso, come in una poesia, si usa Maiuscolo+Invio.
+- **La puntina** si mette e si toglie dal menu del foglietto (⋮) o della nota aperta: «Fissa in alto».
+  Le note fissate stanno in testa, fra loro in ordine di data; fissare non cambia la data della nota.
 - **Eliminare** toglie il file dal repository; una copia resta nella cronologia di GitHub.
 - **Lavorare dal sito di GitHub.** File caricati a mano nella cartella `note/` compaiono in bacheca;
   le rinomine fatte sul sito vengono seguite. Il resto del repository (README e altre cartelle) è
@@ -128,8 +165,8 @@ allineamento o un sottolineato non arrivano, si riapplicano lì con un clic.
 
 ## Collaudo
 
-- `tests/test.html`, aperto nel browser, verifica il motore di conversione (39 prove).
-- `tests/e2e/` contiene il collaudo dell'intera app con un GitHub simulato (87 verifiche);
+- `tests/test.html`, aperto nel browser, verifica il motore di conversione (42 prove).
+- `tests/e2e/` contiene il collaudo dell'intera app con un GitHub simulato (147 verifiche);
   le istruzioni sono in `README-progetto.md`.
 
 ## Licenza

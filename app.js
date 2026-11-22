@@ -8,7 +8,7 @@
 (() => {
   'use strict';
 
-  const VERSIONE = '1.2.0';
+  const VERSIONE = '1.5.0';
   const CFG = Object.assign({ repository: 'biawrite-note', cartella: 'note' }, window.BIAWRITE_CONFIG || {});
   const COLORI = ['giallo', 'arancio', 'rosa', 'lilla', 'azzurro', 'verde', 'carta', 'grigio'];
   const NOMI_COLORI = { giallo: 'Giallo', arancio: 'Arancio', rosa: 'Rosa', lilla: 'Lilla', azzurro: 'Azzurro', verde: 'Verde', carta: 'Bianco', grigio: 'Grigio' };
@@ -35,36 +35,49 @@
   salvaS();
 
   /* ============================================================ archivio locale (IndexedDB) */
+  /* due depositi: «note» (i testi) e «allegati» (immagini e file, con il loro percorso nel repository) */
   const DB = {
     _p: null, _mem: null,
     apri() {
       if (this._mem) return Promise.resolve(null);
       if (!this._p) {
+        const memoria = () => { this._mem = { note: new Map(), allegati: new Map() }; };
         this._p = new Promise(res => {
           try {
-            const r = indexedDB.open('biawrite', 1);
-            r.onupgradeneeded = () => r.result.createObjectStore('note', { keyPath: 'id' });
+            const r = indexedDB.open('biawrite', 2);
+            r.onupgradeneeded = () => {
+              const db = r.result;
+              if (!db.objectStoreNames.contains('note')) db.createObjectStore('note', { keyPath: 'id' });
+              if (!db.objectStoreNames.contains('allegati')) db.createObjectStore('allegati', { keyPath: 'percorso' });
+            };
             r.onsuccess = () => res(r.result);
-            r.onerror = () => { this._mem = new Map(); res(null); };
-          } catch (e) { this._mem = new Map(); res(null); }
+            r.onerror = () => { memoria(); res(null); };
+          } catch (e) { memoria(); res(null); }
         });
       }
       return this._p;
     },
-    async _tx(modo, fn) {
+    async _tx(nome, modo, fn) {
       const db = await this.apri();
-      if (!db) return fn(null);
+      if (!db) { const r = fn(null, this._mem[nome]); return r && typeof r === 'object' && 'result' in r ? r.result : undefined; }
       return new Promise((res, rej) => {
-        const tx = db.transaction('note', modo);
-        const r = fn(tx.objectStore('note'));
+        const tx = db.transaction(nome, modo);
+        const r = fn(tx.objectStore(nome));
         tx.oncomplete = () => res(r && r.result);
         tx.onerror = tx.onabort = () => rej(tx.error);
       });
     },
-    tutte() { return this._tx('readonly', s => (s ? s.getAll() : { result: [...this._mem.values()] })); },
-    metti(n) { return this._tx('readwrite', s => (s ? s.put(n) : this._mem.set(n.id, n))).catch(e => console.warn('archivio', e)); },
-    togli(id) { return this._tx('readwrite', s => (s ? s.delete(id) : this._mem.delete(id))).catch(e => console.warn('archivio', e)); },
-    svuota() { return this._tx('readwrite', s => (s ? s.clear() : this._mem.clear())).catch(e => console.warn('archivio', e)); },
+    _chiave: x => x.id || x.percorso,
+    tutte(nome = 'note') { return this._tx(nome, 'readonly', (s, m) => (s ? s.getAll() : { result: [...m.values()] })); },
+    prendi(nome, k) { return this._tx(nome, 'readonly', (s, m) => (s ? s.get(k) : { result: m.get(k) })).catch(() => undefined); },
+    metti(x, nome = 'note') { return this._tx(nome, 'readwrite', (s, m) => (s ? s.put(x) : m.set(this._chiave(x), x))).catch(e => console.warn('archivio', e)); },
+    mettiTutte(arr, nome = 'note') {                         // una sola transazione: migliaia di note in un colpo
+      return this._tx(nome, 'readwrite', (s, m) => { for (const x of arr) (s ? s.put(x) : m.set(this._chiave(x), x)); }).catch(e => console.warn('archivio', e));
+    },
+    togli(id, nome = 'note') { return this._tx(nome, 'readwrite', (s, m) => (s ? s.delete(id) : m.delete(id))).catch(e => console.warn('archivio', e)); },
+    async svuota() {
+      for (const nome of ['note', 'allegati']) await this._tx(nome, 'readwrite', (s, m) => (s ? s.clear() : m.clear())).catch(e => console.warn('archivio', e));
+    },
   };
 
   /* ============================================================ note */
@@ -91,11 +104,14 @@
   }
   const stampaData = d => due(d.getDate()) + '-' + due(d.getMonth() + 1) + ' ' + due(d.getHours()) + '.' + due(d.getMinutes());
   function primaRiga(c, ext) {
-    const r = c.split('\n').find(l => l.trim());
-    if (!r) return '';
-    let t = (ext === 'txt' ? r : Core.mdToText(r)).replace(/^(?:[-•]|\d+\.)\s+/, '').replace(/\s+/g, ' ').trim();
-    if (t.length > 60) t = t.slice(0, 60).replace(/\s+\S*$/, '');
-    return t;
+    for (const r of c.split('\n', 40)) {                // la prima riga con del testo vero («#» da solo non conta)
+      if (!r.trim()) continue;
+      let t = (ext === 'txt' ? r : Core.mdToText(r)).replace(/^(?:[-•]|\d+\.)\s+/, '').replace(/\s+/g, ' ').trim();
+      if (!t) continue;
+      if (t.length > 60) t = t.slice(0, 60).replace(/\s+\S*$/, '');
+      return t;
+    }
+    return '';
   }
   /* Un nome di file libero: né fra le altre note, né fra i file del repository che non sono di questa nota. */
   function nomeLibero(nome, n, ist) {
@@ -124,7 +140,9 @@
   }
   const collegato = () => S.mode === 'github';
   const daInviare = n => !n.deleted && (n.dirty || n.metaDirty || !n.path) && !(!n.path && !n.content.trim() && n.autoName);
-  const inSospeso = () => [...note.values()].some(n => (n.deleted && n.path) || daInviare(n));
+  let allegatiInAttesa = 0, ricevendo = 0;
+  const inSospeso = () => allegatiInAttesa > 0 || [...note.values()].some(n => (n.deleted && n.path) || daInviare(n));
+  const pendenti = () => { let k = allegatiInAttesa; for (const n of note.values()) if ((n.deleted && n.path) || daInviare(n)) k++; return k; };
 
   function anteprima(n) {
     const c = memo.get(n);
@@ -151,23 +169,37 @@
   /* ============================================================ bacheca */
   const vista = () => app.dataset.vista;
 
+  /* Con migliaia di note la bacheca si disegna a blocchi: i foglietti successivi arrivano
+   * quando si scorre verso il fondo. */
+  const PASSO = 120;
+  let limite = PASSO;
+  const osservatore = 'IntersectionObserver' in window
+    ? new IntersectionObserver(v => { if (v.some(x => x.isIntersecting)) { limite += PASSO; disegna(); } }, { root: $('#bacheca'), rootMargin: '900px 0px' })
+    : null;
   function disegna() {
     const q = elCerca.value.trim().toLowerCase();
     const elenco = [...note.values()].filter(n => !n.deleted)
       .filter(n => !q || n.name.toLowerCase().includes(q) || n.content.toLowerCase().includes(q))
-      .sort((a, b) => b.modified - a.modified);
+      .sort((a, b) => (!!b.pinned - !!a.pinned) || b.modified - a.modified);      // le fissate in testa
     const gh = collegato();
-    elNote.innerHTML = elenco.map(n => {
+    const fissate = elenco.filter(n => n.pinned).length;
+    if (osservatore) osservatore.disconnect();
+    const tutti = elenco.length;
+    if (osservatore) elenco.splice(limite);
+    elNote.innerHTML = elenco.map((n, i) => {
       const ext = estensione(n.name);
       const fuori = gh && (n.dirty || n.metaDirty || !n.path);
-      return '<article class="nota" data-id="' + escA(n.id) + '" data-colore="' + escA(n.color) + '" style="' + posa(n.id) + '" tabindex="0" role="button" aria-label="' +
-        escA('Apri: ' + titoloDi(n)) + '"><div class="faccia">' + (n.autoName ? '' : '<h3>' + esc(titoloDi(n)) + '</h3>') +
+      return (i === fissate && fissate ? '<div class="stacco-fissate" aria-hidden="true"></div>' : '') +
+        '<article class="nota' + (n.pinned ? ' fissata' : '') + '" data-id="' + escA(n.id) + '" data-colore="' + escA(n.color) + '" style="' + posa(n.id) + '" tabindex="0" role="button" aria-label="' +
+        escA('Apri: ' + titoloDi(n) + (n.pinned ? ' (fissata in alto)' : '')) + '">' +
+        (n.pinned ? '<svg class="puntina" viewBox="0 0 34 40" aria-hidden="true"><use href="#puntina"/></svg>' : '') + '<div class="faccia">' + (n.autoName ? '' : '<h3>' + esc(titoloDi(n)) + '</h3>') +
         '<div class="anteprima">' + anteprima(n) + '</div><footer>' +
         (fuori ? '<span class="segno" title="Non ancora su GitHub"></span>' : '') +
         '<time>' + esc(quando(n.modified)) + '</time>' + (ext === 'txt' ? '<span>.txt</span>' : '') + '</footer></div><i class="orecchia"></i>' +
         '<button class="altro" aria-label="Colore, nome, elimina" aria-haspopup="menu"><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="12" cy="19" r="1.7"/></svg></button>' +
         '</article>';
-    }).join('');
+    }).join('') + (tutti > elenco.length ? '<div class="ancora" aria-hidden="true"></div>' : '');
+    if (osservatore && tutti > elenco.length) osservatore.observe(elNote.querySelector('.ancora'));
     elVuoto.hidden = elenco.length > 0;
     if (!elenco.length) {
       if (q) elVuoto.textContent = 'Nessuna nota contiene «' + elCerca.value.trim() + '».';
@@ -187,7 +219,8 @@
     if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('nota')) { e.preventDefault(); const n = note.get(e.target.dataset.id); if (n) apri(n); }
   });
   elVuoto.addEventListener('click', e => { if (e.target.id === 'vuoto-importa') sceltaImporta(e.target); });
-  elCerca.addEventListener('input', disegna);
+  let timerCerca = 0;
+  elCerca.addEventListener('input', () => { clearTimeout(timerCerca); timerCerca = setTimeout(() => { limite = PASSO; disegna(); }, 120); });
   $('#nuova').addEventListener('click', () => nuovaNota());
 
   function nuovaNota() {
@@ -211,8 +244,9 @@
     editor.dataset.colore = n.color;
     titolo.value = n.autoName ? '' : titoloDi(n);
     $('#estensione').textContent = '.' + estensione(n.name);
+    liberaImmagini();
     if (txt) testo.value = n.content;
-    else carta.innerHTML = Core.mdToHtml(n.content) || '<p><br></p>';
+    else { carta.innerHTML = preparaHtml(Core.mdToHtml(n.content)) || '<p><br></p>'; mostraImmagini(); }
     app.dataset.vista = 'editor';
     $('#foglio').scrollTop = 0;
     if (txt) cresci();
@@ -224,7 +258,7 @@
   }
   function apriContenuto(n) {
     if (estensione(n.name) === 'txt') { testo.value = n.content; cresci(); }
-    else carta.innerHTML = Core.mdToHtml(n.content) || '<p><br></p>';
+    else { liberaImmagini(); carta.innerHTML = preparaHtml(Core.mdToHtml(n.content)) || '<p><br></p>'; mostraImmagini(); }
     aggiornaTesta(n);
     segnaVuota();
   }
@@ -233,7 +267,49 @@
     if (document.activeElement !== titolo) titolo.value = n.autoName ? '' : titoloDi(n);
   }
 
-  function leggiEditor() { return estensione(aperta.name) === 'txt' ? testo.value : Core.htmlToMd(carta.innerHTML); }
+  function leggiEditor() { return estensione(aperta.name) === 'txt' ? testo.value : Core.htmlToMd(htmlVero()); }
+
+  /* Le immagini salvate nel repository (allegati/…) hanno un indirizzo relativo, che il browser
+   * non può aprire da solo: si mostrano da una copia locale, ma nel testo resta l'indirizzo vero. */
+  const relativo = s => !!s && !/^(https?:|data:|blob:|mailto:|\/\/)/i.test(s);
+  function preparaHtml(html) {
+    if (!/<img/i.test(html)) return html;
+    const t = document.createElement('template');
+    t.innerHTML = html;
+    t.content.querySelectorAll('img').forEach(i => { const s = i.getAttribute('src'); if (relativo(s)) { i.dataset.vero = s; i.removeAttribute('src'); } });
+    return t.innerHTML;
+  }
+  function htmlVero(senzaImmaginiLocali) {
+    if (!carta.querySelector('img[data-vero]')) return carta.innerHTML;
+    const c = carta.cloneNode(true);
+    c.querySelectorAll('img[data-vero]').forEach(i => { if (senzaImmaginiLocali) i.remove(); else { i.setAttribute('src', i.dataset.vero); i.removeAttribute('data-vero'); } });
+    return c.innerHTML;
+  }
+  const urlImmagini = [];
+  function liberaImmagini() { urlImmagini.splice(0).forEach(u => URL.revokeObjectURL(u)); }
+  async function immagine(percorso) {
+    const a = await DB.prendi('allegati', percorso);
+    if (a && a.dati) return a.dati;
+    const sha = ultimaIst && ultimaIst.allegati && ultimaIst.allegati.get(percorso);
+    if (!sha || !arch || !chiave) return null;
+    const blob = new Blob([await arch.leggiBinario(sha)], { type: Imp.mime(percorso) });
+    await DB.metti({ percorso, tipo: blob.type, dati: blob, inviato: true, sha }, 'allegati');
+    return blob;
+  }
+  async function mostraImmagini() {
+    const nota = aperta;
+    for (const img of [...carta.querySelectorAll('img[data-vero]:not([src])')]) {
+      let percorso;
+      try { percorso = CFG.cartella + '/' + decodeURIComponent(img.dataset.vero).replace(/^\.\//, ''); } catch (e) { continue; }
+      try {
+        const b = await immagine(percorso);
+        if (!b || aperta !== nota || !img.isConnected) continue;
+        const u = URL.createObjectURL(b);
+        urlImmagini.push(u);
+        img.src = u;
+      } catch (e) { /* resta il segnaposto */ }
+    }
+  }
 
   /* Porta nell'archivio ciò che è scritto nell'editor. */
   function conferma() {
@@ -267,6 +343,7 @@
     if (!n) return;
     conferma();
     aperta = null;
+    liberaImmagini();
     if (!n.content.trim() && n.autoName && !n.path) { note.delete(n.id); DB.togli(n.id); }     // nota nuova lasciata vuota
     app.dataset.vista = 'bacheca';
     disegna();
@@ -417,7 +494,7 @@
   $('#copia').addEventListener('click', async () => {
     if (!aperta) return;
     conferma();
-    const html = estensione(aperta.name) === 'txt' ? Core.textToHtml(testo.value) : Core.pulisci(carta.innerHTML);
+    const html = estensione(aperta.name) === 'txt' ? Core.textToHtml(testo.value) : Core.pulisci(htmlVero(true));
     if (!html) { avviso('La nota è vuota: non c\'è nulla da copiare.'); return; }
     const ok = await copia(Core.perAppunti(html), Core.htmlToText(html));
     avviso(ok ? 'Copiato con la formattazione: ora incollalo.' : 'Il browser non ha permesso la copia: seleziona il testo e copia a mano.');
@@ -464,12 +541,19 @@
       });
       m.appendChild(c);
       m.appendChild(document.createElement('hr'));
+      voce(m, n.pinned ? 'Togli la puntina' : 'Fissa in alto', '', () => fissa(n));
       voce(m, 'Rinomina', '', () => rinomina(n));
       voce(m, 'Duplica', '', () => duplica(n));
       voce(m, 'Elimina', '', () => elimina(n), true);
     });
   }
   function toccata(n) { n.rev++; DB.metti(n); programmaSync(); aggiornaStato(); if (vista() === 'bacheca') disegna(); }
+  /* La puntina: la nota resta in testa alla bacheca, su tutti i dispositivi. Non cambia la data. */
+  function fissa(n) {
+    n.pinned = !n.pinned; n.metaDirty = true;
+    toccata(n);
+    if (n === aperta) avviso(n.pinned ? 'Fissata in alto nella bacheca.' : 'Puntina tolta.');
+  }
   function cambiaColore(n, col) {
     if (n.color === col) return;
     n.color = col; n.metaDirty = true;
@@ -491,7 +575,7 @@
     const ora = Date.now();
     const c = Object.assign({}, n, { id: nuovoId(), path: null, sha: null,
       name: nomeLibero(nomeFile(titoloDi(n) + ' (copia)', estensione(n.name)), null, ultimaIst),
-      autoName: false, creata: ora, modified: ora, dirty: true, metaDirty: false, rev: 0 });
+      autoName: false, pinned: false, bear: undefined, creata: ora, modified: ora, dirty: true, metaDirty: false, rev: 0 });
     note.set(c.id, c);
     toccata(c);
     avviso('Nota duplicata.');
@@ -543,14 +627,19 @@
   function aggiornaStato() {
     let s, t, d = '';
     const sosp = inSospeso() || !!timerScrivi;
+    const quante = collegato() ? pendenti() : 0;
     if (!collegato()) { s = 'locale'; t = 'Solo qui'; d = 'Le note restano su questo dispositivo. Tocca per collegare GitHub.'; }
-    else if (inCorso) { s = 'lavoro'; t = 'Sincronizzo…'; }
+    else if (inCorso) {
+      s = 'lavoro';
+      t = ricevendo > 10 ? 'Ricevo… ' + ricevendo : quante > 10 ? 'Invio… ' + quante : 'Sincronizzo…';
+      d = ricevendo > 10 ? 'Arrivano le note dal repository: ne mancano ' + ricevendo + '.' : quante > 10 ? 'Le note salgono su GitHub a gruppi: ne mancano ' + quante + '. Lascia BiaWrite aperta.' : '';
+    }
     else if (bloccoPubblico) { s = 'attesa'; t = 'Salvato qui'; d = 'Il repository ' + S.repo + ' è diventato pubblico: BiaWrite non ci scrive finché non torna privato.'; }
     else if (erroreChiave) { s = 'attesa'; t = 'Salvato qui'; d = 'GitHub non accetta più la chiave (scaduta o revocata). Tocca per inserirne una nuova.'; }
     else if (!navigator.onLine) { s = 'attesa'; t = sosp ? 'Salvato qui' : 'Non in linea'; d = 'Senza rete: le modifiche restano su questo dispositivo e partono appena torna la connessione.'; }
     else if (!chiave) { s = 'attesa'; t = 'Salvato qui'; d = 'Le note sono chiuse: si sincronizzano dopo lo sblocco.'; }
     else if (erroreSync) { s = 'attesa'; t = 'Salvato qui'; d = erroreSync; }
-    else if (sosp) { s = 'lavoro'; t = 'Salvo…'; }
+    else if (sosp) { s = 'lavoro'; t = quante > 10 ? 'Salvo… ' + quante : 'Salvo…'; }
     else { s = 'ok'; t = 'Su GitHub'; d = 'Tutto è nel repository privato ' + S.repo + '.'; }
     elStato.dataset.s = s;
     elStato.lastElementChild.textContent = t;
@@ -579,8 +668,11 @@
     const col = m && COLORI.includes(m.colore) ? m.colore : (n.color || coloreDa(n.path || n.id));
     const auto = !!(m && m.auto);
     const mod = (m && Date.parse(m.mod)) || n.modified;
-    if (col === n.color && auto === n.autoName && mod === n.modified) return false;
-    n.color = col; n.autoName = auto; n.modified = mod;
+    const fissata = !!(m && m.fissata);
+    const creata = (m && Date.parse(m.creata)) || n.creata;
+    const bear = (m && m.bear) || n.bear;
+    if (col === n.color && auto === n.autoName && mod === n.modified && fissata === !!n.pinned && creata === n.creata && bear === n.bear) return false;
+    n.color = col; n.autoName = auto; n.modified = mod; n.pinned = fissata; n.creata = creata; n.bear = bear;
     return true;
   }
 
@@ -643,9 +735,17 @@
       }
       lavori.push(() => scarica(p, sha, null, meta[baseDi(p)]));
     }
-    let k = 0;
-    const operaio = async () => { while (k < lavori.length) await lavori[k++](); };
-    await Promise.all([operaio(), operaio(), operaio(), operaio()]);
+    let k = 0, fatti_ = 0;
+    ricevendo = lavori.length;
+    if (ricevendo > 10) aggiornaStato();
+    const operaio = async () => {
+      while (k < lavori.length) {
+        await lavori[k++]();
+        ricevendo--; fatti_++;
+        if (fatti_ % 25 === 0) { aggiornaStato(); if (fatti_ % 200 === 0 && vista() === 'bacheca' && menu.hidden) disegna(); }
+      }
+    };
+    try { await Promise.all(Array.from({ length: 8 }, operaio)); } finally { ricevendo = 0; }
   }
 
   /* Invia in un commit le note da inviare (a lotti, se sono tante). */
@@ -656,7 +756,7 @@
     let peso = 0;
     for (const n of tutte) {
       const w = n.content.length + 200;
-      if (lotto.length && (lotto.length >= 150 || peso + w > 1500000)) break;
+      if (lotto.length && (lotto.length >= 300 || peso + w > 1500000)) break;
       lotto.push(n); peso += w;
     }
     const indice = { formato: 1, note: Object.assign({}, ist.indice.note || {}) };
@@ -688,7 +788,8 @@
       let contenuto = null;
       if (n.dirty || !n.sha) { contenuto = n.content; modifiche.push({ percorso: dest, contenuto }); }
       else if (n.path !== dest || !remoto) modifiche.push({ percorso: dest, sha: n.sha });
-      indice.note[n.name] = { colore: n.color, auto: n.autoName, mod: new Date(n.modified).toISOString() };
+      indice.note[n.name] = Object.assign({ colore: n.color, auto: n.autoName, mod: new Date(n.modified).toISOString() },
+        n.creata && n.creata !== n.modified ? { creata: new Date(n.creata).toISOString() } : {}, n.pinned ? { fissata: true } : {}, n.bear ? { bear: n.bear } : {});
       fatti.push({ n, rev, dest, contenuto });
     }
     const nuovo = await arch.scrivi(ist, modifiche, indice, messaggio(fatti, tutte.length > lotto.length));
@@ -703,6 +804,29 @@
       await DB.metti(n);
     }
     return { nuovo, altri: tutte.length > lotto.length };
+  }
+  /* Immagini e allegati: ogni file diventa un oggetto git (una richiesta ciascuno, con il freno
+   * dell'archivio), poi un commit li mette nella cartella allegati/. Lo sha si ricorda subito,
+   * così un commit interrotto non costringe a ricaricare. */
+  async function inviaAllegati(ist) {
+    if (!allegatiInAttesa) return null;
+    const tutti = ((await DB.tutte('allegati')) || []).filter(a => !a.inviato);
+    allegatiInAttesa = tutti.length;
+    if (!tutti.length) return null;
+    const lotto = tutti.slice(0, 40), modifiche = [];
+    for (const a of lotto) {
+      if (!a.sha || ist.allegati.get(a.percorso) !== a.sha) {
+        if (!a.sha) { a.sha = await arch.caricaBlob(new Uint8Array(await a.dati.arrayBuffer())); await DB.metti(a, 'allegati'); }
+        modifiche.push({ percorso: a.percorso, sha: a.sha });
+      }
+    }
+    const nuovo = modifiche.length
+      ? await arch.scrivi(ist, modifiche, ist.indice, 'BiaWrite: ' + (modifiche.length === 1 ? '1 allegato' : modifiche.length + ' allegati'))
+      : ist;
+    for (const a of lotto) { a.inviato = true; await DB.metti(a, 'allegati'); }
+    allegatiInAttesa = tutti.length - lotto.length;
+    aggiornaStato();
+    return { nuovo };
   }
   function messaggio(fatti, altri) {
     if (fatti.length === 1 && !altri) {
@@ -723,11 +847,13 @@
       verificato = true; bloccoPubblico = false;
     }
     conferma();
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 60; i++) {
       const ist = await arch.istantanea();
       ultimaIst = ist;
       await applica(ist);
       try {
+        const ra = await inviaAllegati(ist);                                   // prima le immagini, poi le note che le citano
+        if (ra) { ultimaIst = ra.nuovo; continue; }
         const r = await invia(ist);
         if (!r) return;
         ultimaIst = r.nuovo;
@@ -1070,7 +1196,7 @@
   function sceltaImporta(ancora) {
     if (!puoCartella) { selFile.click(); return; }
     apriMenu(ancora, m => {
-      voce(m, 'Scegli i file…', '.md .txt .html .zip', () => selFile.click());
+      voce(m, 'Scegli i file…', '.md .txt .zip Bear', () => selFile.click());
       voce(m, 'Scegli una cartella…', '', () => selCartella.click());
     });
   }
@@ -1096,66 +1222,168 @@
     if (elementi.length) importa(elementi);
   });
 
-  const chiaveDoppio = (titolo_, contenuto) => titolo_.toLowerCase() + '\u0000' + contenuto.replace(/\s+$/, '');
+  /* Testo «normalizzato» per riconoscere una nota già presente anche se importata in un altro formato. */
+  const normale = t => t.replace(/<mark>([^<]*)<\/mark>/g, '==$1==').replace(/\s+/g, ' ').trim().toLowerCase();
+  const quanti = n => n === 1 ? '1 nota' : n.toLocaleString('it-IT') + ' note';
+
   async function importa(elementi) {
     if (vista() === 'editor') history.back();
-    avviso('Leggo i file…', 1500);
+    avviso('Leggo i file…', 2500);
     let esame;
     try {
       const { voci, scartati } = await Imp.raccogli(elementi);
       esame = await Imp.esamina(voci, Core);
       esame.scartati.unshift(...scartati);
     } catch (e) { avviso('Non sono riuscito a leggere i file: ' + e.message, 6000); return; }
-    // doppioni: già in BiaWrite, o ripetuti nella stessa scelta
-    const presenti = new Set();
-    note.forEach(n => { if (!n.deleted) presenti.add(chiaveDoppio(titoloDi(n), n.content)); });
-    const visti = new Set();
-    let doppi = 0;
-    const pronte = esame.pronte.filter(x => {
-      const k = chiaveDoppio(x.titolo, x.testo);
-      const kmd = x.tipo === 'txt' ? chiaveDoppio(x.titolo, Core.htmlToMd(Core.textToHtml(x.testo))) : k;
-      if (presenti.has(k) || presenti.has(kmd) || visti.has(k)) { doppi++; return false; }
-      visti.add(k);
-      return true;
-    });
-    const conta = t => pronte.filter(x => x.origine === t).length;
-    const dett = [['md', 'Markdown'], ['txt', 'di testo'], ['html', 'pagine web']].filter(([t]) => conta(t)).map(([t, n]) => conta(t) + ' ' + n).join(', ');
+
+    // doppioni: già in BiaWrite (con lo stesso testo, anche in un altro formato) o ripetuti nella stessa scelta
+    const perTesto = new Map(), perBear = new Map();
+    note.forEach(n => { if (!n.deleted) { perTesto.set(normale(n.content), n); if (n.bear) perBear.set(n.bear, n); } });
+    const toccate = [];                                     // importate da Bear e poi modificate qui: restano come sono
+    // Dentro un backup di Bear ogni nota conta, anche se uguale a un'altra: Bear la teneva come nota a sé.
+    // Fra file sciolti si salta solo lo stesso file scelto due volte (stesso nome, stesso testo esatto).
+    // Una nota già presente può corrispondere a una sola nota importata.
+    const visti = new Set(), usate = new Set(), nuove_ = [], gia = [];
+    for (const x of esame.pronte) {
+      if (x.origine !== 'bear') {
+        const k = x.titolo.toLowerCase() + '\u0000' + x.testo;
+        if (visti.has(k)) continue;
+        visti.add(k);
+      }
+      const varianti = [normale(x.testo)];
+      if (x.grezzo) varianti.push(normale(x.grezzo), normale(x.grezzo.replace(/^# /, '')));
+      if (x.tipo === 'txt' && x.origine !== 'bear') varianti.push(normale(Core.htmlToMd(Core.textToHtml(x.testo))));
+      const corto = varianti[0].length < 20;
+      let n = null;
+      const stessa = x.bear && perBear.get(x.bear);
+      if (stessa && !usate.has(stessa)) {
+        usate.add(stessa);
+        if (varianti.includes(normale(stessa.content))) gia.push({ x, n: stessa }); else toccate.push(x);
+        continue;
+      }
+      for (const v of varianti) {
+        const o = perTesto.get(v);
+        if (o && !usate.has(o) && (!corto || titoloDi(o).toLowerCase() === x.titolo.toLowerCase())) { n = o; break; }
+      }
+      if (n) { usate.add(n); gia.push({ x, n }); } else nuove_.push(x);
+    }
+
+    const bear = esame.pronte.some(x => x.origine === 'bear');
+    const vive = nuove_.filter(x => !x.cestino), cestino = nuove_.filter(x => x.cestino);
+    const giaBear = gia.filter(g => g.x.origine === 'bear');
+    const immagini = l => l.reduce((t, x) => t + (x.allegati ? x.allegati.length : 0), 0);
     const altri = esame.scartati.length;
-    const quanti = n => n === 1 ? '1 nota' : n + ' note';
     let html = '';
-    if (pronte.length) html += '<p>Pronte: <b>' + quanti(pronte.length) + '</b>' + (dett ? ' (' + esc(dett) + ')' : '') + '. Ognuna conserva il nome del file e la sua data.</p>';
-    else html += '<p>Nessuna nota nuova da importare.</p>';
-    if (doppi || altri) {
-      html += '<p class="nota-bene">' + [doppi ? (doppi === 1 ? '1 già presente' : doppi + ' già presenti') : '', altri ? altri + (altri === 1 ? ' file saltato' : ' file saltati') : ''].filter(Boolean).join(', ') + '.</p>';
+    if (bear) {
+      const fissate = vive.filter(x => x.fissata).length, esatte = vive.filter(x => x.tipo === 'txt').length, img = immagini(vive);
+      html += '<p>Dal backup di Bear: <b>' + quanti(vive.length) + '</b>, con le loro date di creazione e di modifica' +
+        (fissate ? '; ' + fissate + ' con la puntina' : '') + (img ? '; ' + img + (img === 1 ? ' immagine' : ' immagini') : '') + '.</p>' +
+        '<p class="nota-bene">Gli a capo di Bear restano a capo e il titolo resta la prima riga, come in Bear.' +
+        (esatte ? ' ' + quanti(esatte) + ' con codice o formule LaTeX ' + (esatte === 1 ? 'resta' : 'restano') + ' testo esatto, carattere per carattere.' : '') + '</p>';
+      if (cestino.length) {
+        const ic = immagini(cestino);
+        html += '<label class="spunta"><input type="checkbox" id="bear-cestino"> Importa anche ' + (cestino.length === 1 ? 'la nota che è' : 'le ' + cestino.length + ' note che sono') +
+          ' nel cestino di Bear' + (ic ? ' (con ' + ic + (ic === 1 ? ' immagine)' : ' immagini)') : '') + '</label>';
+      }
+      if (giaBear.length) {
+        html += '<label class="spunta"><input type="checkbox" id="bear-aggiorna" checked> ' + (giaBear.length === 1 ? 'Una nota è' : giaBear.length + ' note sono') +
+          ' già in BiaWrite con lo stesso testo: ' + (giaBear.length === 1 ? 'aggiornala' : 'aggiornale') + ' con la versione di Bear (date, puntina, a capo)</label>';
+      }
+    } else if (vive.length) {
+      const conta = t => vive.filter(x => x.origine === t).length;
+      const dett = [['md', 'Markdown'], ['txt', 'di testo'], ['html', 'pagine web']].filter(([t]) => conta(t)).map(([t, n]) => conta(t) + ' ' + n).join(', ');
+      html += '<p>Pronte: <b>' + quanti(vive.length) + '</b>' + (dett ? ' (' + esc(dett) + ')' : '') + '. Ognuna conserva il nome del file e la sua data.</p>';
+    }
+    if (!vive.length && !cestino.length && !giaBear.length) html += '<p>Nessuna nota nuova da importare.</p>';
+    if (toccate.length) html += '<p class="nota-bene">' + (toccate.length === 1 ? 'Una nota era già stata importata e l\'hai modificata qui: resta' : toccate.length + ' note erano già state importate e le hai modificate qui: restano') + ' come sono.</p>';
+    const giaAltre = gia.length - giaBear.length;
+    if (giaAltre || altri) {
+      const saltati = bear ? (altri === 1 ? ' nota saltata' : ' note saltate') : (altri === 1 ? ' file saltato' : ' file saltati');
+      html += '<p class="nota-bene">' + [giaAltre ? (giaAltre === 1 ? '1 già presente' : giaAltre + ' già presenti') : '', altri ? altri + saltati : ''].filter(Boolean).join(', ') + '.</p>';
       if (altri) {
-        html += '<details class="elenco-saltati"><summary>Quali file sono stati saltati</summary><ul>' +
-          esame.scartati.slice(0, 80).map(s => '<li>' + esc(s.percorso) + ' — ' + esc(s.motivo) + '</li>').join('') +
+        html += '<details class="elenco-saltati"><summary>' + (bear ? 'Quali e perché' : 'Quali file sono stati saltati') + '</summary><ul>' +
+          esame.scartati.slice(0, 80).map(x => '<li>' + esc(x.percorso) + ' — ' + esc(x.motivo) + '</li>').join('') +
           (altri > 80 ? '<li>e altri ' + (altri - 80) + '</li>' : '') + '</ul></details>';
       }
     }
-    if (pronte.some(x => x.tipo === 'txt')) {
+    if (vive.some(x => x.tipo === 'txt' && x.origine === 'txt')) {
       html += '<label class="spunta"><input type="checkbox" id="txt-in-md"> Trasforma le note di testo (.txt) in note formattabili (.md)</label>';
     }
-    const ok = await chiedi({ titolo: 'Importa le vecchie note', html, ok: pronte.length ? 'Importa ' + quanti(pronte.length) : 'Chiudi', soloOk: !pronte.length });
-    if (!ok || !pronte.length) return;
+    const scelte = iniziali => {                          // iniziali: le caselle come appariranno all'apertura
+      const casella = (id, prima) => { const e = $('#' + id); return !iniziali && e ? e.checked : prima; };
+      const c = casella('bear-cestino', false), a = casella('bear-aggiorna', true);
+      return { nuove: vive.concat(c ? cestino : []), aggiorna: a ? giaBear.filter(g => !g.x.cestino || c) : [] };
+    };
+    const etichetta = iniziali => { const s_ = scelte(iniziali), k = s_.nuove.length + s_.aggiorna.length; return k ? 'Importa ' + quanti(k) : 'Chiudi'; };
+    const nulla = !vive.length && !cestino.length && !giaBear.length;
+    const attesa = chiedi({ titolo: bear ? 'Importa da Bear' : 'Importa le vecchie note', html, ok: etichetta(true), soloOk: nulla });
+    $('#finestra-corpo').addEventListener('change', () => { const b = $('#finestra-corpo button[value="ok"]'); if (b) b.textContent = etichetta(); });
+    const ok = await attesa;
+    const sc = scelte();
+    if (!ok || nulla || (!sc.nuove.length && !sc.aggiorna.length)) return;
     const inMd = !!($('#txt-in-md') && $('#txt-in-md').checked);
+
+    avviso('Importo…', 2500);
     const ora = Date.now();
-    pronte.sort((a, b) => (a.data || ora) - (b.data || ora));
-    const nuove = [];
-    for (const x of pronte) {
+    const occupati = new Set();
+    note.forEach(n => { if (!n.deleted) occupati.add(n.name.toLowerCase()); });
+    if (ultimaIst) for (const p of ultimaIst.file.keys()) occupati.add(baseDi(p).toLowerCase());
+    const libero = (nome, vecchio) => {
+      if (vecchio && vecchio.toLowerCase() === nome.toLowerCase()) return vecchio;
+      const m = nome.match(/^(.*?)(\.[^.]+)$/);
+      let x = nome, k = 1;
+      while (occupati.has(x.toLowerCase())) { k++; x = m[1] + ' (' + k + ')' + m[2]; }
+      occupati.add(x.toLowerCase());
+      return x;
+    };
+    const allegati = [];
+    /* Il testo e i metadati di una nota importata; le immagini vanno in allegati/<id>/ e il testo le cita da lì. */
+    async function prepara(x) {
       let tipo = x.tipo, contenuto = x.testo;
-      if (tipo === 'txt' && inMd) { tipo = 'md'; contenuto = Core.htmlToMd(Core.textToHtml(x.testo)); }
+      if (tipo === 'txt' && inMd && x.origine === 'txt') { tipo = 'md'; contenuto = Core.htmlToMd(Core.textToHtml(x.testo)); }
+      if (x.allegati && x.allegati.length) {
+        const id = x.id || coloreDa(x.percorso) + Math.abs([...x.percorso].reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 7)).toString(36);
+        contenuto = contenuto.replace(/(\]\(\s*<?|src=["'])assets\//g, '$1allegati/' + id + '/');
+        for (const a of x.allegati) {
+          try {
+            const dati = await a.voce.leggi();
+            allegati.push({ percorso: CFG.cartella + '/allegati/' + id + '/' + a.nome, tipo: Imp.mime(a.nome), dati: new Blob([dati], { type: Imp.mime(a.nome) }), inviato: false, sha: null });
+          } catch (e) { /* allegato illeggibile: il testo lo cita comunque */ }
+        }
+      }
       const quando_ = x.data && x.data < ora + 86400000 ? x.data : ora;
-      const n = { id: nuovoId(), path: null, sha: null, name: nomeLibero(nomeFile(x.titolo, tipo), null, ultimaIst), content: contenuto,
-        color: coloreDa(x.percorso), creata: quando_, modified: quando_, autoName: false, dirty: true, metaDirty: false, deleted: false, rev: 1 };
+      const daBear = x.origine === 'bear';
+      return { tipo, contenuto, quando_, creata: x.creata || quando_, daBear,                // le date di Bear come sono, anche se incoerenti
+        titolo: daBear ? (primaRiga(contenuto, tipo) || nomeData(x.creata || quando_)) : x.titolo };
+    }
+    const nuove = [];
+    sc.nuove.sort((a, b) => (a.data || ora) - (b.data || ora));
+    for (const x of sc.nuove) {
+      const p_ = await prepara(x);
+      const n = { id: nuovoId(), path: null, sha: null, name: libero(nomeFile(p_.titolo, p_.tipo)), content: p_.contenuto,
+        color: coloreDa(x.percorso), creata: p_.creata, modified: p_.quando_, autoName: p_.daBear, pinned: !!x.fissata,
+        bear: x.bear || undefined, dirty: true, metaDirty: false, deleted: false, rev: 1 };
       note.set(n.id, n);
       nuove.push(n);
     }
-    for (const n of nuove) await DB.metti(n);
-    elCerca.value = '';
+    for (const { x, n } of sc.aggiorna) {                  // la stessa nota, già presente: prende testo e metadati di Bear
+      const p_ = await prepara(x);
+      const proposto = nomeFile(p_.titolo, p_.tipo);
+      const radice = n.name.replace(/ \(\d+\)(\.[^.]+)$/, '$1');   // «NATALE (2).md» resta tale se il titolo è «NATALE»
+      if (radice.toLowerCase() !== proposto.toLowerCase()) { occupati.delete(n.name.toLowerCase()); n.name = libero(proposto); }
+      n.content = p_.contenuto; n.autoName = true;
+      n.modified = p_.quando_; n.creata = p_.creata; n.pinned = !!x.fissata; n.bear = x.bear || n.bear;
+      n.dirty = true; n.metaDirty = true; n.rev++;
+      nuove.push(n);
+    }
+    await DB.mettiTutte(nuove);
+    if (allegati.length) { await DB.mettiTutte(allegati, 'allegati'); allegatiInAttesa += allegati.length; }
+    elCerca.value = ''; limite = PASSO;
     disegna();
     aggiornaStato();
-    avviso(quanti(nuove.length) + (nuove.length === 1 ? ' importata' : ' importate') + (collegato() ? ': le carico su GitHub.' : '.'), 5000);
+    const k = sc.nuove.length, a = sc.aggiorna.length;
+    avviso((k ? quanti(k) + (k === 1 ? ' importata' : ' importate') : '') + (k && a ? ', ' : '') + (a ? quanti(a) + (a === 1 ? ' aggiornata' : ' aggiornate') : '') +
+      (collegato() ? ': le carico su GitHub, a gruppi. Lascia BiaWrite aperta finché lo stato dice «Su GitHub».' : '.'), 8000);
     if (collegato()) sync();
   }
 
@@ -1180,10 +1408,16 @@
       '<div class="fila"><button class="tasto bordo" data-a="pin">' + (S.lock ? 'Cambia PIN' : 'Imposta un PIN') + '</button>' +
       (S.lock && bio ? '<button class="tasto bordo" data-a="bio">' + (S.lock.bio ? 'Disattiva impronta o volto' : 'Attiva impronta o volto') + '</button>' : '') +
       (S.lock ? '<button class="tasto rosso" data-a="sblocca">Togli il blocco</button>' : '') + '</div>' +
-      '<h3>Nuove note</h3>' +
-      '<div class="fila"><select class="campo" id="formato" aria-label="Formato delle nuove note"><option value="md">Markdown (.md), con formattazione</option><option value="txt">Testo semplice (.txt)</option></select></div>' +
+      '<h3>Scrittura</h3>' +
+      '<div class="fila"><select class="campo" id="spazio" aria-label="Spazio fra i capoversi">' +
+        '<option value="stretto">Capoversi appena staccati</option><option value="nessuno">Capoversi senza spazio, come a macchina</option>' +
+        '<option value="rientro">Capoversi con rientro, come nei libri</option><option value="ampio">Capoversi ben staccati, come in un blog</option></select></div>' +
+      '<p class="nota-bene">Cambia solo l\'aspetto qui: nel file e in WordPress ogni Invio resta un capoverso. Per andare a capo dentro lo stesso capoverso (una poesia, un indirizzo) usa Maiuscolo+Invio.</p>' +
+      '<div class="fila"><select class="campo" id="formato" aria-label="Formato delle nuove note"><option value="md">Nuove note in Markdown (.md), con formattazione</option><option value="txt">Nuove note in testo semplice (.txt)</option></select></div>' +
       '<p class="nota-bene">BiaWrite ' + VERSIONE + '</p>' +
       '<div class="azioni"><button class="tasto pieno" data-a="chiudi">Chiudi</button></div>';
+    $('#spazio', c).value = S.spazio || 'stretto';
+    $('#spazio', c).onchange = e => { S.spazio = e.target.value; salvaS(); carta.dataset.spazio = S.spazio; };
     $('#formato', c).value = S.formato === 'txt' ? 'txt' : 'md';
     $('#formato', c).onchange = e => { S.formato = e.target.value; salvaS(); };
     c.onclick = async e => {
@@ -1268,8 +1502,10 @@
         localStorage.removeItem(K_BOZZA);
       }
     } catch (e) { /* bozza illeggibile */ }
+    try { allegatiInAttesa = ((await DB.tutte('allegati')) || []).filter(x => !x.inviato).length; } catch (e) { allegatiInAttesa = 0; }
     if (!S.lock) chiave = S.token || '';
     preparaArchivio();
+    carta.dataset.spazio = S.spazio || 'stretto';
     if (!S.mode) { app.dataset.vista = 'avvio'; mostraBenvenuto(); }
     else if (S.lock) mostraBlocco();
     else entra();

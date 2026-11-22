@@ -6,7 +6,7 @@
 <title>BiaWrite</title>
 <meta name="description" content="Appunti e articoli in Markdown, conservati in un repository privato di GitHub.">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://api.github.com; img-src 'self' data: https:; font-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://api.github.com; img-src 'self' data: blob: https: http:; font-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="theme-color" content="#E7ECEC" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#1A2123" media="(prefers-color-scheme: dark)">
 <meta name="mobile-web-app-capable" content="yes">
@@ -187,6 +187,10 @@ button { cursor: pointer; background: none; border: 0; padding: 0; -webkit-tap-h
   font: .72rem var(--comandi); color: rgba(27, 34, 36, .62); white-space: nowrap; overflow: hidden;
 }
 .nota footer .segno { flex: none; width: 7px; height: 7px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px currentColor; }
+/* la puntina: il foglietto pende da lì */
+.nota .puntina { position: absolute; z-index: 3; left: 50%; top: -10px; width: 34px; height: 40px; translate: -50% 0; pointer-events: none; overflow: visible; }
+.nota.fissata .faccia { padding-top: 24px; }
+.stacco-fissate { grid-column: 1 / -1; height: 0; margin-block: -8px; }
 .nota .altro {
   position: absolute; z-index: 2; top: 1px; right: 1px; width: 34px; height: 34px; border-radius: 50%;
   display: grid; place-items: center; color: rgba(27, 34, 36, .6);
@@ -242,19 +246,27 @@ button { cursor: pointer; background: none; border: 0; padding: 0; -webkit-tap-h
 #carta.vuota::before { content: "Scrivi…"; color: var(--tenue); opacity: .6; position: absolute; pointer-events: none; }
 #carta { position: relative; hyphens: auto; }
 #carta > :first-child { margin-top: 0; }
-#carta p { margin: 0 0 .85em; }
+/* Spazio fra i capoversi: ogni Invio apre un capoverso; quanto si vede staccato è una scelta di stile */
+#carta { --capoverso: .3em; }
+#carta[data-spazio="nessuno"], #carta[data-spazio="rientro"] { --capoverso: 0; }
+#carta[data-spazio="ampio"] { --capoverso: .85em; }
+#carta[data-spazio="rientro"] p + p:not([style*="center"]):not([style*="right"]) { text-indent: 1.6em; }
+#carta p { margin: 0 0 var(--capoverso); }
 #carta :is(h1, h2, h3, h4, h5, h6) { margin: 1.5em 0 .5em; line-height: 1.22; letter-spacing: -.01em; }
 #carta h1 { font-size: 1.6em; } #carta h2 { font-size: 1.36em; } #carta h3 { font-size: 1.14em; } #carta :is(h4, h5, h6) { font-size: 1em; }
-#carta :is(ul, ol) { margin: 0 0 .85em; padding-left: 1.5em; }
+#carta :is(ul, ol) { margin: 0 0 var(--capoverso); padding-left: 1.5em; }
 #carta li > :is(ul, ol) { margin-bottom: 0; }
-#carta blockquote { margin: 0 0 .85em; padding-left: 1em; border-left: 3px solid var(--blu); font-style: italic; }
+#carta blockquote { margin: .3em 0 calc(var(--capoverso) + .3em); padding-left: 1em; border-left: 3px solid var(--blu); font-style: italic; }
 #carta blockquote > :last-child { margin-bottom: 0; }
 #carta a { color: var(--blu); text-decoration-thickness: 1px; text-underline-offset: 2px; }
 #carta hr { border: 0; border-top: 1px solid var(--filo); margin: 1.6em 20%; }
 #carta :is(pre, code) { font: .82em/1.5 ui-monospace, "SF Mono", Menlo, "DejaVu Sans Mono", Consolas, monospace; }
-#carta pre { margin: 0 0 1em; padding: .7em .9em; background: rgba(var(--ombra), .07); white-space: pre-wrap; overflow-wrap: anywhere; }
+#carta pre { margin: .3em 0 calc(var(--capoverso) + .3em); padding: .7em .9em; background: rgba(var(--ombra), .07); white-space: pre-wrap; overflow-wrap: anywhere; }
 #carta code { background: rgba(var(--ombra), .08); padding: .08em .3em; }
 #carta img { max-width: 100%; height: auto; }
+#carta img[data-vero]:not([src]) { display: inline-block; width: 160px; height: 110px; background: rgba(var(--ombra), .08); vertical-align: middle; }
+#carta mark { background: color-mix(in srgb, var(--giallo) 75%, transparent); color: inherit; padding: 0 .1em; }
+.ancora { grid-column: 1 / -1; height: 1px; }
 
 /* ------------------------------------------------------------------ menu, finestre, avvisi */
 #menu {
@@ -359,6 +371,25 @@ a.tasto { text-decoration: none; color: inherit; }
 </head>
 <body>
 
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <radialGradient id="puntina-testa" cx="36%" cy="30%" r="72%">
+      <stop offset="0" stop-color="#FF9D92"/><stop offset=".3" stop-color="#E5463B"/><stop offset=".78" stop-color="#A8231B"/><stop offset="1" stop-color="#7A1610"/>
+    </radialGradient>
+    <linearGradient id="puntina-ago" x1="0" x2="1"><stop offset="0" stop-color="#EEF1F2"/><stop offset=".5" stop-color="#9AA4A9"/><stop offset="1" stop-color="#5F686D"/></linearGradient>
+    <filter id="puntina-sfoca" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="1.6"/></filter>
+    <!-- puntina a testa sferica vista dall'alto: ombra sulla carta, ago che entra nel foglio, testa lucida -->
+    <symbol id="puntina" viewBox="0 0 34 40">
+      <ellipse cx="21.5" cy="29.5" rx="8" ry="4.3" fill="#000" opacity=".34" filter="url(#puntina-sfoca)"/>
+      <path d="M17 23 L19.5 31" stroke="#000" stroke-opacity=".22" stroke-width="2" stroke-linecap="round" filter="url(#puntina-sfoca)"/>
+      <path d="M14 20 L15.3 30" stroke="url(#puntina-ago)" stroke-width="1.9" stroke-linecap="round"/>
+      <circle cx="15" cy="13" r="9.5" fill="url(#puntina-testa)"/>
+      <circle cx="15" cy="13" r="9.1" fill="none" stroke="#5E110C" stroke-opacity=".45" stroke-width=".9"/>
+      <ellipse cx="11.6" cy="9.3" rx="3.4" ry="2.3" fill="#FFF" opacity=".78" transform="rotate(-25 11.6 9.3)"/>
+    </symbol>
+  </defs>
+</svg>
+
 <div id="app" data-vista="avvio">
   <header id="barra">
     <button id="indietro" class="icona" aria-label="Torna alla bacheca"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
@@ -441,7 +472,7 @@ a.tasto { text-decoration: none; color: inherit; }
   </form><i class="orecchia"></i></div>
 </section>
 
-<input type="file" id="scegli-file" multiple accept=".md,.markdown,.mdown,.mkd,.txt,.text,.html,.htm,.zip,text/markdown,text/plain,text/html,application/zip" hidden>
+<input type="file" id="scegli-file" multiple hidden>
 <input type="file" id="scegli-cartella" webkitdirectory multiple hidden>
 <dialog id="finestra"><form method="dialog" id="finestra-corpo"></form></dialog>
 <dialog id="pannello"><div class="corpo" id="pannello-corpo"></div></dialog>

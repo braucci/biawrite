@@ -1,5 +1,34 @@
 # Registro delle modifiche
 
+## 1.5.0 — 22 novembre 2026
+
+- **Spazio fra i capoversi** a scelta (*Impostazioni → Scrittura*): appena staccati (nuovo predefinito,
+  al posto dello spazio ampio), senza spazio come a macchina, con rientro della prima riga come nei libri,
+  ben staccati come in un blog. Cambia solo l'aspetto: nel file e in WordPress ogni Invio resta un
+  capoverso; Maiuscolo+Invio va a capo dentro lo stesso capoverso.
+
+## 1.4.0 — 22 novembre 2026
+
+- **Importazione dei backup di Bear** (`.bear2bk`, anche cartelle `.textbundle` e file `.textpack`):
+  date di creazione e modifica, puntine, immagini e allegati, cestino a scelta. Gli a capo di Bear
+  diventano a capo veri; le note di codice e LaTeX restano testo esatto; `==evidenziato==` e le vecchie
+  immagini di Bear 1 sono convertite; gli allegati non citati restano visibili. Reimportare non duplica
+  e non tocca le note modificate in BiaWrite.
+- **Immagini**: conservate nel repository in `note/allegati/`, mostrate nell'editor, scaricate una volta
+  e tenute in una copia locale; nel testo resta sempre l'indirizzo vero.
+- **Migliaia di note**: bacheca a blocchi, ricerca con un attimo di pausa, scritture in blocco, lotti di
+  300 note, ricezione parallela, conteggio dell'avanzamento nello stato, freno sulle richieste a GitHub.
+- Motore: gli elenchi numerati che non partono da 1 conservano il numero; le caselle `- [ ]` non vengono
+  alterate. Il titolo automatico salta le righe senza testo.
+- Le immagini esterne in `http://` non sono più bloccate.
+
+## 1.3.0 — 22 novembre 2026
+
+- **Puntina**: dal menu del foglietto o della nota aperta, «Fissa in alto» tiene una nota in testa alla
+  bacheca, anche cercando. La puntina è disegnata sul foglietto e viaggia nell'indice del repository
+  (`"fissata": true`), quindi compare su tutti i dispositivi. Fissare non cambia la data; la copia di
+  una nota fissata nasce senza puntina.
+
 ## 1.2.0 — 22 novembre 2026
 
 - **Archivio su GitHub** al posto di Google Drive: le note stanno in un repository privato, nella

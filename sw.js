@@ -3,7 +3,7 @@
  * Con la rete si preferisce sempre la versione pubblicata (gli aggiornamenti arrivano subito);
  * se la rete non risponde entro 3 secondi si usa la copia in cache.
  * Le chiamate a GitHub non passano di qui.                                                    */
-const CACHE = 'biawrite-1.2.0';
+const CACHE = 'biawrite-1.5.0';
 const FILE = ['./', 'index.html', 'core.js', 'archivio.js', 'importa.js', 'app.js', 'config.js', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png',
   'fonts/kalam-latin-400-normal.woff2', 'fonts/kalam-latin-700-normal.woff2'];
 

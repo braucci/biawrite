@@ -114,6 +114,7 @@
         const el = doc.createElement(BLOCCHI[tag]);
         const al = allineamento(n);
         if (al) el.style.textAlign = al;
+        if (tag === 'OL') { const st = parseInt(n.getAttribute('start'), 10); if (st > 1 && st < 1e9) el.setAttribute('start', String(st)); }
         a.appendChild(el);
         percorri(n, el, doc, pre);
         continue;
@@ -276,7 +277,7 @@
     const ord = lista.tagName === 'OL';
     const doc = lista.ownerDocument;
     const righe = [];
-    let i = 0;
+    let i = ord ? (parseInt(lista.getAttribute('start'), 10) || 1) - 1 : 0;
     for (const li of lista.children) {
       i++;
       const marca = ord ? i + '. ' : '- ';
@@ -297,6 +298,7 @@
       chiudi();
       let corpo = '';
       parti.forEach((p, k) => { corpo += (k ? (p.lista ? '\n' : '\n\n') : '') + p.s; });
+      corpo = corpo.replace(/^\\\[([ xX])\\\](?= |$)/, '[$1]');                  // casella da spuntare: «[ ] cosa da fare»
       righe.push(marca + corpo.split('\n').map((l, k) => (k && l ? rientro + l : l)).join('\n'));
     }
     return righe.join('\n');
@@ -458,6 +460,7 @@
       }
       if ((m = l.match(RE_VOCE)) && m[1].length <= 3) {
         const ord = /^\d/.test(m[2]);
+        const inizio = ord ? parseInt(m[2], 10) : 1;
         const voci = [];
         while (i < n) {
           const v = righe[i].match(RE_VOCE);
@@ -489,7 +492,7 @@
           const pross = j < n && righe[j].match(RE_VOCE);
           if (pross && pross[1].length <= 3 && /^\d/.test(pross[2]) === ord) i = j; else break;
         }
-        o += (ord ? '<ol>' : '<ul>') + voci.join('') + (ord ? '</ol>' : '</ul>');
+        o += (ord ? (inizio > 1 ? '<ol start="' + inizio + '">' : '<ol>') : '<ul>') + voci.join('') + (ord ? '</ol>' : '</ul>');
         continue;
       }
       // paragrafo (con eventuale titolo «sottolineato»)
@@ -529,7 +532,7 @@
     const blocco = (el, pref) => {
       const t = el.tagName;
       if (t === 'UL' || t === 'OL') {
-        let i = 0;
+        let i = t === 'OL' ? (parseInt(el.getAttribute('start'), 10) || 1) - 1 : 0;
         for (const li of el.children) {
           i++;
           const m = pref + (t === 'OL' ? i + '. ' : '- ');

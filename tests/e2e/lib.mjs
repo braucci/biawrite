@@ -51,7 +51,13 @@ export class GitHubFinto {
     const t = this.alberi.get(this.commit.get(this.ref).tree);
     return new Map([...t].map(([p, s]) => [p, this.blob.get(s).toString('utf8')]));
   }
-  note() { return new Map([...this.file()].filter(([p]) => p.startsWith('note/') && !p.endsWith('.biawrite.json'))); }
+  note() { return new Map([...this.file()].filter(([p]) => p.startsWith('note/') && !p.startsWith('note/allegati/') && !p.endsWith('.biawrite.json'))); }
+  /* file binari del ramo: percorso → Buffer */
+  binari(prefisso = 'note/allegati/') {
+    if (!this.ref) return new Map();
+    const t = this.alberi.get(this.commit.get(this.ref).tree);
+    return new Map([...t].filter(([p]) => p.startsWith(prefisso)).map(([p, s]) => [p, this.blob.get(s)]));
+  }
   indice() { const x = this.file().get('note/.biawrite.json'); return x ? JSON.parse(x) : null; }
   messaggi() { const m = []; let c = this.ref; while (c) { const o = this.commit.get(c); m.push(o.message); c = o.parents[0]; } return m; }
   /* un altro programma (o il sito di GitHub) cambia il repository */
@@ -104,6 +110,13 @@ export class GitHubFinto {
         else t.set(v.path, this.metti(Buffer.from(v.content, 'utf8')));
       }
       return json({ sha: this.albero(t) }, 201);
+    }
+    if (q === '/git/blobs' && m === 'POST') {
+      if (!k.scrive) return vietato();
+      const c = corpo();
+      if (c.encoding !== 'base64' && c.encoding !== 'utf-8') return json({ message: 'encoding non valida' }, 422);
+      this.blobCaricati = (this.blobCaricati || 0) + 1;
+      return json({ sha: this.metti(Buffer.from(c.content, c.encoding === 'base64' ? 'base64' : 'utf8')) }, 201);
     }
     if (q === '/git/commits' && m === 'POST') {
       if (!k.scrive) return vietato();
@@ -162,6 +175,16 @@ export function creaZip(voci) {          // voci: [{ nome, testo|dati, data: Dat
   const e = Buffer.alloc(22); e.writeUInt32LE(0x06054b50, 0); e.writeUInt16LE(voci.length, 8); e.writeUInt16LE(voci.length, 10);
   e.writeUInt32LE(cd.length, 12); e.writeUInt32LE(scarto, 16);
   return Buffer.concat([...locali, cd, e]);
+}
+
+/* un'immagine PNG vera (w×h, un colore), per provare gli allegati */
+export function creaPng(w, h, [r, g, b] = [200, 60, 40]) {
+  const tab = Array.from({ length: 256 }, (_, n) => { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; });
+  const crc = buf => { let c = 0xFFFFFFFF; for (const x of buf) c = tab[(c ^ x) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+  const pezzo = (tipo, dati) => { const l = Buffer.alloc(4); l.writeUInt32BE(dati.length); const td = Buffer.concat([Buffer.from(tipo), dati]); const c = Buffer.alloc(4); c.writeUInt32BE(crc(td)); return Buffer.concat([l, td, c]); };
+  const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(w, 0); ihdr.writeUInt32BE(h, 4); ihdr[8] = 8; ihdr[9] = 2;
+  const riga = Buffer.concat([Buffer.from([0]), Buffer.from(Array.from({ length: w }, () => [r, g, b]).flat())]);
+  return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), pezzo('IHDR', ihdr), pezzo('IDAT', zlib.deflateSync(Buffer.concat(Array(h).fill(riga)))), pezzo('IEND', Buffer.alloc(0))]);
 }
 
 export const pausa = ms => new Promise(r => setTimeout(r, ms));

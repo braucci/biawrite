@@ -55,8 +55,21 @@
     const segmenti = p => p.split('/').map(encodeURIComponent).join('/');
     const R = '/repos/' + segmenti(repo);
 
+    /* GitHub ammette di norma al più 80 richieste che creano contenuti al minuto e 500 all'ora:
+     * qui si resta sotto le 60 al minuto, aspettando quando serve. */
+    const scritture = [];
+    async function freno() {
+      for (;;) {
+        const ora = Date.now();
+        while (scritture.length && ora - scritture[0] > 60000) scritture.shift();
+        if (scritture.length < 60) { scritture.push(ora); return; }
+        await new Promise(r => setTimeout(r, 60000 - (ora - scritture[0]) + 50));
+      }
+    }
+
     async function chiama(metodo, percorso, corpo) {
       if (!chiave()) throw new ErroreArchivio('bloccato', 'chiave non disponibile');
+      if (metodo !== 'GET') await freno();
       let r;
       try {
         r = await fetchFn(API + percorso, {
@@ -89,10 +102,13 @@
 
     async function leggi(sha) {
       const b = await chiama('GET', R + '/git/blobs/' + sha);
-      return new TextDecoder('utf-8').decode(deb64(b.content)).replace(/^﻿/, '');
+      return new TextDecoder('utf-8').decode(deb64(b.content)).replace(/^\uFEFF/, '');
     }
+    const leggiBinario = async sha => deb64((await chiama('GET', R + '/git/blobs/' + sha)).content);
+    /* Carica un file (immagine, allegato) come oggetto git; restituisce il suo sha. */
+    const caricaBlob = async bytes => (await chiama('POST', R + '/git/blobs', { content: b64(bytes), encoding: 'base64' })).sha;
 
-    const vuota = () => ({ commit: null, albero: null, file: new Map(), indice: { formato: 1, note: {} }, indiceSha: null });
+    const vuota = () => ({ commit: null, albero: null, file: new Map(), allegati: new Map(), indice: { formato: 1, note: {} }, indiceSha: null });
 
     /* Istantanea del ramo: commit, albero, file della cartella delle note, indice dei metadati.
      * Se il ramo non è cambiato dall'ultima volta costa una sola richiesta. */
@@ -109,11 +125,12 @@
       if (cache && cache.commit === commit) return cache;
       const c = await chiama('GET', R + '/git/commits/' + commit);
       const albero = await chiama('GET', R + '/git/trees/' + c.tree.sha + '?recursive=1');
-      const file = new Map();
+      const file = new Map(), allegati = new Map();
       let indiceSha = null;
       for (const v of albero.tree || []) {
         if (v.type !== 'blob' || !v.path.startsWith(cartella + '/')) continue;
         const nome = v.path.slice(cartella.length + 1);
+        if (nome.startsWith('allegati/')) { allegati.set(v.path, v.sha); continue; }
         if (nome.includes('/')) continue;                                    // solo la cartella, non le sottocartelle
         if (nome === INDICE) { indiceSha = v.sha; continue; }
         if (/\.(md|markdown|txt)$/i.test(nome) && !nome.startsWith('.')) file.set(v.path, v.sha);
@@ -126,7 +143,7 @@
           catch (e) { if (!(e instanceof SyntaxError)) throw e; }                 // indice illeggibile: si ricostruisce
         }
       }
-      return (cache = { commit, albero: c.tree.sha, file, indice, indiceSha });
+      return (cache = { commit, albero: c.tree.sha, file, allegati, indice, indiceSha });
     }
 
     /* Prepara l'archivio al collegamento: se il repository è vuoto crea la cartella con l'indice,
@@ -164,17 +181,19 @@
       const t = await chiama('POST', R + '/git/trees', { base_tree: base.albero, tree: voci });
       const c = await chiama('POST', R + '/git/commits', { message: messaggio, tree: t.sha, parents: [base.commit] });
       await chiama('PATCH', R + '/git/refs/heads/' + segmenti(ramo), { sha: c.sha, force: false });
-      const file = new Map(base.file);
+      const file = new Map(base.file), allegati = new Map(base.allegati || []);
+      const allegato = p => p.startsWith(cartella + '/allegati/');
       for (const m of modifiche) {
-        if (m.elimina) file.delete(m.percorso);
-        else file.set(m.percorso, m.sha || await shaBlob(m.contenuto));
+        const dove = allegato(m.percorso) ? allegati : file;
+        if (m.elimina) dove.delete(m.percorso);
+        else dove.set(m.percorso, m.sha || await shaBlob(m.contenuto));
       }
-      cache = { commit: c.sha, albero: t.sha, file, indice, indiceSha: await shaBlob(testoIndice) };
+      cache = { commit: c.sha, albero: t.sha, file, allegati, indice, indiceSha: await shaBlob(testoIndice) };
       return cache;
     }
 
     return {
-      verifica, utente, istantanea, leggi, prepara, scrivi,
+      verifica, utente, istantanea, leggi, leggiBinario, caricaBlob, prepara, scrivi,
       dimentica() { cache = null; },
       get ramo() { return ramo; },
       cartella, repo,

@@ -1,5 +1,5 @@
 /* Collaudo 4 — la puntina: nota fissata in testa, sincronizzata fra dispositivi. */
-import { chromium, servi, GitHubFinto, pausa, finche, verifica, esito, RADICE, AVVIO, dispositivo, attendiOk, collega } from './lib.mjs';
+import { chromium, servi, GitHubFinto, pausa, finche, verifica, esito, RADICE, AVVIO, dispositivo, attendiOk, collega , piatta } from './lib.mjs';
 
 const srv = await servi(RADICE, 8768);
 const URL_ = 'http://localhost:8768/';
@@ -81,7 +81,7 @@ verifica(await A.p.locator('.nota.fissata').count() === 1, 'la copia nasce senza
 
 console.log('S. Senza GitHub la puntina resta dopo la riapertura');
 {
-  const ctx = await br.newContext({ viewport: { width: 1100, height: 800 }, serviceWorkers: 'block' });
+  const ctx = await br.newContext({ viewport: { width: 1100, height: 800 }, serviceWorkers: 'block' }); await piatta(ctx);
   const p = await ctx.newPage();
   await p.goto(URL_);
   await p.click('#solo-locale');

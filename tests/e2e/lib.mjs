@@ -199,9 +199,19 @@ export function verifica(cond, nome, extra) {
 }
 export const esito = () => { console.log(`\n${ok} verifiche superate, ${ko} fallite`); return ko; };
 
+/* I collaudi scritti prima delle cartelle guardano la bacheca «tutte insieme»: la si imposta
+ * all'apertura, se nessuno ha ancora scelto (le prove delle cartelle passano cartelle: true). */
+export async function piatta(ctx) {
+  await ctx.addInitScript(() => {
+    try { const k = 'biawrite.impostazioni', s = JSON.parse(localStorage.getItem(k) || '{}'); if (!('bacheca' in s)) { s.bacheca = 'tutte'; localStorage.setItem(k, JSON.stringify(s)); } } catch (e) { /* niente */ }
+  });
+}
+
 /* un «dispositivo»: contesto del browser con GitHub simulato */
 export async function dispositivo(br, G, url, nome, opz = {}) {
-  const ctx = await br.newContext({ viewport: { width: 1100, height: 800 }, serviceWorkers: 'block', permissions: ['clipboard-read', 'clipboard-write'], ...opz });
+  const { cartelle, ...resto } = opz;
+  const ctx = await br.newContext({ viewport: { width: 1100, height: 800 }, serviceWorkers: 'block', permissions: ['clipboard-read', 'clipboard-write'], ...resto });
+  if (!cartelle) await piatta(ctx);
   await G.monta(ctx);
   const p = await ctx.newPage();
   p.on('pageerror', e => console.log(`  [${nome}] ERRORE PAGINA`, e.message));

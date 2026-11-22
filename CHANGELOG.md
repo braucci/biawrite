@@ -1,5 +1,20 @@
 # Registro delle modifiche
 
+## 1.6.0 — 22 novembre 2026
+
+- **Cartelle dei mesi**: la bacheca raccoglie le note in una cartella per mese, sotto un titolo per
+  anno; la cartella è il mese di nascita della nota e non cambia quando la si ritocca. Le note con la
+  puntina restano in testa. Freccia, tasto indietro del telefono e ricarica funzionano come ci si
+  aspetta; la ricerca guarda dappertutto. Nel repository nulla cambia. L'elenco unico resta disponibile
+  in *Impostazioni → Aspetto*.
+- **Modalità notturna**: giorno, notte o come il dispositivo, decisa prima del disegno della pagina.
+- **Sfondo pastello** lieve con luce e ombra morbide, in cinque tinte; i quadretti diventano un'opzione.
+- **Spaziatura fissa** (IBM Plex Mono, incluso): di serie per le note `.txt`, a scelta per tutte o per
+  nessuna, anche nell'anteprima dei foglietti; tasto **M** per un blocco a spaziatura fissa nelle `.md`.
+- **Foglietti più veri**: aloni di tazza, gocce e pieghe su alcuni di essi, uguali su ogni dispositivo
+  e senza toccare il testo; movimenti a molla, entrata a cascata, puntina che si pianta, eliminazione
+  che scivola via; nessuna animazione con «riduci movimento».
+
 ## 1.5.0 — 22 novembre 2026
 
 - **Spazio fra i capoversi** a scelta (*Impostazioni → Scrittura*): appena staccati (nuovo predefinito,

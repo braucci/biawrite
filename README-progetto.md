@@ -5,6 +5,7 @@
 | File | Ruolo |
 |---|---|
 | `index.html` | struttura della pagina e fogli di stile |
+| `tema.js` | giorno o notte e colore del tavolo, applicati **prima** che la pagina sia disegnata (niente lampo bianco); segue il sistema anche ad app aperta |
 | `core.js` | **motore**: HTML dell'editor ⇄ Markdown, sanificazione, esportazioni. Nessuna rete, nessuna interfaccia |
 | `archivio.js` | **archivio**: lettura e scrittura del repository GitHub (API REST «Git Database»). Nessuna interfaccia |
 | `importa.js` | **importazione**: lettura di file, cartelle e archivi `.zip`, decodifica dei testi. Nessuna interfaccia |
@@ -12,7 +13,7 @@
 | `config.js` | nome proposto per il repository delle note e cartella; **nessun segreto** |
 | `sw.js` | service worker: cache dei file dell'app per l'uso senza rete |
 | `manifest.webmanifest`, `icon*` | installazione sulla schermata Home |
-| `fonts/` | carattere a mano dei foglietti (Kalam, licenza SIL OFL, inclusa) |
+| `fonts/` | Kalam (foglietti) e IBM Plex Mono (spaziatura fissa), licenza SIL OFL, incluse |
 | `privacy.html` | informativa |
 | `tests/` | collaudo del motore (`test.html`) e dell'app (`e2e/`) |
 
@@ -165,6 +166,43 @@ minuto), sotto il limite secondario di GitHub (80 al minuto, 500 all'ora).
 Un backup reale di 2.373 note e 26 immagini: lettura ed esame in circa 7 s; 10 commit e 26 oggetti
 per caricare tutto.
 
+## Bacheca, temi e movimento
+
+**Cartelle dei mesi.** Sono virtuali: nascono a ogni disegno dalla data di nascita della nota
+(`creata`, sincronizzata nell'indice `note/.biawrite.json`; in mancanza, la data di modifica).
+Si raggruppa per nascita e non per modifica perché è un dato stabile: ritoccare una nota non la
+sposta. Il repository non cambia struttura. La vista ha tre modi: *radice* (note fissate, poi un
+titolo per anno e le cartelle dei suoi mesi), *cartella* (note del mese, fissate in testa, poi per
+nascita decrescente, disegnate a blocchi di 120), *elenco* (ricerca, o bacheca «tutte insieme»).
+L'apertura di una cartella è una voce della cronologia del browser (`history.pushState`), così il
+tasto indietro di Android, il gesto di iOS e quello del mouse escono dalla cartella; ricaricando
+la pagina si resta dove si era. Una nota nuova, alla chiusura, porta alla cartella del suo mese
+sostituendo la voce corrente se si era già in un'altra cartella.
+
+**Tema.** La notte è una classe (`html.notte`) che ridefinisce le variabili di colore; la sceglie
+`tema.js` da *Impostazioni* (giorno, notte, come il dispositivo) prima del primo disegno. Lo sfondo
+è un pastello (`--tavolo`, sei scelte con `data-sfondo`) sotto due gradienti radiali che fanno
+luce e ombra e una grana leggera; i quadretti restano come opzione. `meta theme-color` segue il
+tavolo, così anche la barra del telefono cambia colore.
+
+**Macchie e pieghe.** Ogni foglietto ricava da un hash della propria impronta (data di nascita, o
+nome) un'inclinazione e, con probabilità circa 28 %, un segno: alone di tazza, alone interrotto o
+goccia; con probabilità 13 % una piega. I segni sono SVG in linea con `feTurbulence` +
+`feDisplacementMap` (bordi irregolari), posati con `mix-blend-mode: multiply` sotto il testo
+(`z-index`) e senza intercettare il tocco. Dimensioni e posizione sono in percentuale del foglietto,
+così restano proporzionati sul telefono. Lo stesso foglietto ha gli stessi segni su ogni dispositivo.
+
+**Movimento.** Proprietà di trasformazione separate (`rotate`, `translate`, `scale`) con una curva a
+molla (`cubic-bezier(.34, 1.36, .64, 1)`): il foglietto si solleva e si raddrizza un poco sotto il
+puntatore. L'ombra che cresce è uno pseudo-elemento di cui varia solo l'opacità, che il browser
+compone senza ridisegnare. Entrata a cascata (26 ms fra un foglietto e l'altro, al massimo 22
+passi), puntina che si pianta, foglietto eliminato che scivola via. Con `prefers-reduced-motion`
+tutte le animazioni sono spente.
+
+**Spaziatura fissa.** Una sola regola (`fissaPer`) decide per l'editor e per l'anteprima del
+foglietto: di serie solo i `.txt`, a scelta tutte o nessuna. Nell'editor Markdown il tasto **M**
+alterna `<pre>` e `<p>` (`formatBlock`); il motore scrive `<pre>` come blocco recintato da backtick.
+
 ## Collaudo
 
 **Motore** — apri `tests/test.html`: 42 prove.
@@ -174,7 +212,7 @@ per caricare tutto.
 ```sh
 cd tests/e2e
 npm install playwright && npx playwright install chromium
-node prova1.mjs && node prova2.mjs && node prova3.mjs && node prova4.mjs && node prova5.mjs && node prova6.mjs
+node prova1.mjs && node prova2.mjs && node prova3.mjs && node prova4.mjs && node prova5.mjs && node prova6.mjs && node prova7.mjs
 ```
 
 `lib.mjs` contiene un **GitHub simulato** (oggetti git in memoria, ramo con controllo di avanzamento,
@@ -194,6 +232,14 @@ scrittore di archivi zip.
   LaTeX esatti, evidenziato, immagini (anche di Bear 1 e non citate), editor, secondo dispositivo,
   reimportazione senza doppioni né nomi cambiati.
 - `prova6.mjs` (7 verifiche): spazio fra i capoversi — il testo non cambia, cambia solo l'aspetto.
+- `prova7.mjs` (67 verifiche): cartelle dei mesi — anni e conteggi, mese di nascita e non di modifica,
+  ordine interno, puntine, freccia, indietro e avanti del browser, ricarica, nota nuova nella cartella
+  del suo mese, repository invariato, ricerca, elenco unico; notte, giorno e tema del sistema; sfondi
+  pastello e quadretti; spaziatura fissa nell'editor e sul foglietto, carattere incluso, tasto M e
+  Markdown risultante; macchie (presenti ma non ovunque, sotto il testo, stabili, uguali su due
+  dispositivi); movimenti di puntina ed eliminazione, curva a molla, «riduci movimento»; telefono.
+
+Le prove 1–6 guardano la bacheca «tutte insieme» (`piatta()` in `lib.mjs`); la 7 le cartelle.
 - `prova4.mjs` (17 verifiche): la puntina — ordine in bacheca, ricerca, indice del repository, secondo
   dispositivo, modifica di una nota fissata, puntina tolta dall'editor, copia, uso senza GitHub.
   Con `FOTO=1` salva anche le immagini della bacheca.

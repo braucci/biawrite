@@ -13,6 +13,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="BiaWrite">
 <link rel="manifest" href="manifest.webmanifest">
+<script src="tema.js"></script>
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-192.png">
 <style>
@@ -21,26 +22,45 @@
    su cui si scrive è bianco e basta. Blu e rosso sono quelli della matita
    bicolore: il blu agisce, il rosso cancella.                              */
 :root {
-  --tavolo: #E7ECEC;  --quadretto: #D6DEDF;  --quadro: #C3CDCF;
+  --pastello: #E2EAE0; --pastello-notte: #19201D;
+  --tavolo: var(--pastello);  --quadretto: #D6DEDF;  --quadro: #C3CDCF;
   --foglio: #FDFDFB;  --inchiostro: #1A2224; --tenue: #5C696C;  --filo: #CBD3D4;
   --blu: #2B4C9B;     --blu-su: #FFFFFF;     --rosso: #B8322A;
   --ombra: 20, 32, 36;
   --scrittura: "TeX Gyre Pagella", "Palatino Linotype", Palatino, "Book Antiqua", "URW Palladio L", P052, "Noto Serif", Georgia, serif;
   --mano: "Kalam", "Bradley Hand", "Segoe Print", "Comic Sans MS", cursive;
   --grana: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23g)'/%3E%3C/svg%3E");
+  --fissa: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, "DejaVu Sans Mono", Consolas, monospace;
+  --molla: cubic-bezier(.34, 1.36, .64, 1);         /* un piccolo rimbalzo, come la carta */
+  --morbido: cubic-bezier(.22, 1, .36, 1);
+  --anello: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Cdefs%3E%3Cfilter id='d' x='-25%25' y='-25%25' width='150%25' height='150%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.035' numOctaves='3' seed='7'/%3E%3CfeDisplacementMap in='SourceGraphic' scale='10'/%3E%3C/filter%3E%3CradialGradient id='f'%3E%3Cstop offset='.80' stop-color='%237a4a1c' stop-opacity='0'/%3E%3Cstop offset='.92' stop-color='%237a4a1c' stop-opacity='.10'/%3E%3Cstop offset='.975' stop-color='%235e3510' stop-opacity='.34'/%3E%3Cstop offset='1' stop-color='%235e3510' stop-opacity='0'/%3E%3C/radialGradient%3E%3C/defs%3E%3Cg filter='url(%23d)'%3E%3Ccircle cx='60' cy='60' r='47' fill='url(%23f)'/%3E%3Ccircle cx='60' cy='60' r='44' fill='%238a5a2b' fill-opacity='.04'/%3E%3C/g%3E%3C/svg%3E");
+  --rotto: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Cdefs%3E%3Cfilter id='d' x='-25%25' y='-25%25' width='150%25' height='150%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.035' numOctaves='3' seed='3'/%3E%3CfeDisplacementMap in='SourceGraphic' scale='12'/%3E%3C/filter%3E%3C/defs%3E%3Cg filter='url(%23d)' fill='none'%3E%3Ccircle cx='60' cy='60' r='45' stroke='%235e3510' stroke-opacity='.26' stroke-width='2.2' stroke-dasharray='190 93'/%3E%3Ccircle cx='60' cy='60' r='42' stroke='%237a4a1c' stroke-opacity='.08' stroke-width='6' stroke-dasharray='170 113'/%3E%3C/g%3E%3C/svg%3E");
+  --goccia: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Cdefs%3E%3Cfilter id='d' x='-25%25' y='-25%25' width='150%25' height='150%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.035' numOctaves='3' seed='11'/%3E%3CfeDisplacementMap in='SourceGraphic' scale='14'/%3E%3C/filter%3E%3C/defs%3E%3Cg filter='url(%23d)' fill='%235e3510'%3E%3Cellipse cx='54' cy='58' rx='21' ry='17' fill-opacity='.09'/%3E%3Cellipse cx='54' cy='58' rx='21' ry='17' fill='none' stroke='%235e3510' stroke-opacity='.2' stroke-width='1.7'/%3E%3Ccircle cx='86' cy='40' r='4.5' fill-opacity='.14'/%3E%3Ccircle cx='92' cy='72' r='2.6' fill-opacity='.13'/%3E%3Ccircle cx='28' cy='88' r='3.2' fill-opacity='.11'/%3E%3C/g%3E%3C/svg%3E");
+  --fondo: radial-gradient(130% 80% at 50% -8%, rgba(255, 255, 255, .62), rgba(255, 255, 255, 0) 62%),
+           radial-gradient(150% 110% at 50% 45%, rgba(0, 0, 0, 0) 52%, rgba(25, 35, 35, .11) 100%), var(--grana);
   --comandi: "Avenir Next", Avenir, Cantarell, "Segoe UI", "Noto Sans", Roboto, "Helvetica Neue", sans-serif;
   --giallo: #FFE56A; --arancio: #FFBE73; --rosa: #FFA6BD; --lilla: #CDB9F4;
   --azzurro: #A5D6F5; --verde: #BBE293; --carta: #FBFAF4; --grigio: #D5DAD7;
-  color-scheme: light dark;
+  color-scheme: light;
 }
-@media (prefers-color-scheme: dark) {
-  :root {
-    --tavolo: #1A2123; --quadretto: #222B2E; --quadro: #2B3639;
-    --foglio: #161B1C; --inchiostro: #E3E6E3; --tenue: #98A4A6; --filo: #323D40;
-    --blu: #9DB4F0;    --blu-su: #0F1A33;    --rosso: #F0938A;
-    --ombra: 0, 0, 0;
-  }
+/* La notte: la decide l'utente (o il dispositivo, in automatico); tema.js mette la classe prima del disegno */
+:root.notte {
+  --tavolo: var(--pastello-notte); --quadretto: #222B2E; --quadro: #2B3639;
+  --foglio: #161B1C; --inchiostro: #E3E6E3; --tenue: #98A4A6; --filo: #323D40;
+  --blu: #9DB4F0;    --blu-su: #0F1A33;    --rosso: #F0938A;
+  --ombra: 0, 0, 0;
+  --fondo: radial-gradient(130% 80% at 50% -8%, rgba(255, 255, 255, .055), rgba(255, 255, 255, 0) 60%),
+           radial-gradient(150% 110% at 50% 45%, rgba(0, 0, 0, 0) 45%, rgba(0, 0, 0, .42) 100%), var(--grana);
+  color-scheme: dark;
 }
+html[data-sfondo="cielo"]     { --pastello: #DFE8F0; --pastello-notte: #172029; }
+html[data-sfondo="cipria"]    { --pastello: #EFE3E2; --pastello-notte: #241C1E; }
+html[data-sfondo="lavanda"]   { --pastello: #E6E2EF; --pastello-notte: #1E1B26; }
+html[data-sfondo="menta"]     { --pastello: #DBEBE5; --pastello-notte: #15211D; }
+html[data-sfondo="quadretti"] { --pastello: #E7ECEC; --pastello-notte: #1A2123; }
+@font-face { font-family: "IBM Plex Mono"; font-weight: 400; font-style: normal; font-display: swap; src: url("fonts/ibm-plex-mono-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-weight: 400; font-style: italic; font-display: swap; src: url("fonts/ibm-plex-mono-latin-400-italic.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-weight: 700; font-style: normal; font-display: swap; src: url("fonts/ibm-plex-mono-latin-700-normal.woff2") format("woff2"); }
 @font-face { font-family: "Kalam"; font-weight: 400; font-display: swap; src: url("fonts/kalam-latin-400-normal.woff2") format("woff2"); }
 @font-face { font-family: "Kalam"; font-weight: 700; font-display: swap; src: url("fonts/kalam-latin-700-normal.woff2") format("woff2"); }
 *, *::before, *::after { box-sizing: border-box; }
@@ -58,6 +78,7 @@ button { cursor: pointer; background: none; border: 0; padding: 0; -webkit-tap-h
 #app {
   position: fixed; left: 0; top: 0; width: 100%; height: var(--alt, 100dvh);
   display: flex; flex-direction: column;
+  background: var(--fondo), var(--tavolo);
 }
 #app[data-vista="avvio"] { visibility: hidden; }
 
@@ -113,15 +134,68 @@ button { cursor: pointer; background: none; border: 0; padding: 0; -webkit-tap-h
 #bacheca {
   flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
   padding: 14px max(12px, env(safe-area-inset-right)) calc(96px + env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
-  background-color: var(--tavolo);
+}
+html[data-sfondo="quadretti"] #bacheca {
   background-image:
     linear-gradient(var(--quadro) 1px, transparent 1px), linear-gradient(90deg, var(--quadro) 1px, transparent 1px),
     linear-gradient(var(--quadretto) 1px, transparent 1px), linear-gradient(90deg, var(--quadretto) 1px, transparent 1px);
   background-size: 100px 100px, 100px 100px, 20px 20px, 20px 20px;
   background-attachment: local;
 }
-#note { display: grid; grid-template-columns: repeat(auto-fill, minmax(146px, 1fr)); gap: 24px 18px; max-width: 1180px; margin: 0 auto; padding: 8px 4px; }
-@media (min-width: 640px) { #note { grid-template-columns: repeat(auto-fill, minmax(198px, 1fr)); gap: 38px 32px; padding: 10px 8px; } #bacheca { padding-top: 22px; } }
+#note { max-width: 1180px; margin: 0 auto; }
+.griglia { display: grid; grid-template-columns: repeat(auto-fill, minmax(146px, 1fr)); gap: 24px 18px; padding: 8px 4px; }
+@media (min-width: 640px) { .griglia { grid-template-columns: repeat(auto-fill, minmax(198px, 1fr)); gap: 38px 32px; padding: 10px 8px; } #bacheca { padding-top: 22px; } }
+
+/* ------------------------------------------------------------------ anni e cartelle dei mesi */
+.anno { display: flex; align-items: baseline; gap: 12px; margin: 30px 10px 2px; font: italic 600 1.75rem/1 var(--scrittura); letter-spacing: -.01em; }
+.anno small { font: .8rem var(--comandi); color: var(--tenue); font-style: normal; letter-spacing: 0; }
+.griglia.fissate { padding-bottom: 6px; }
+.griglia.cartelle { gap: 20px 16px; }
+@media (min-width: 640px) { .griglia.cartelle { grid-template-columns: repeat(auto-fill, minmax(172px, 1fr)); gap: 30px 26px; } }
+/* Una cartellina di cartoncino: il retro con la linguetta, i foglietti che spuntano, il davanti con l'etichetta.
+   Passandoci sopra il davanti si apre un poco e i foglietti si alzano. */
+.cartella {
+  --r: 0deg; --dx: 0px; --dy: 0px;
+  position: relative; display: block; width: 100%; aspect-ratio: 5 / 4; perspective: 650px; text-align: left; color: #3B2F1B;
+  rotate: var(--r); translate: var(--dx) var(--dy);
+  filter: drop-shadow(0 1px 1px rgba(var(--ombra), .22)) drop-shadow(0 9px 9px rgba(var(--ombra), .16));
+  transition: rotate .5s var(--molla), translate .5s var(--molla), scale .35s var(--molla);
+}
+.cartella .retro {
+  position: absolute; inset: 0; border-radius: 5px;
+  background: var(--grana), linear-gradient(180deg, #D9C08A, #CFB47A);
+  clip-path: polygon(0 10%, 3% 0, 40% 0, 44% 10%, 100% 10%, 100% 100%, 0 100%);
+}
+.cartella .fogli { position: absolute; left: 7%; right: 7%; top: 13%; height: 46%; }
+.cartella .fogli i {
+  position: absolute; top: calc(var(--k) * 5px); left: calc(var(--k) * 20%); width: 36%; aspect-ratio: 1;
+  background: var(--grana), var(--c); rotate: calc((var(--k) - 1.5) * 5deg); box-shadow: 0 1px 2px rgba(0, 0, 0, .16);
+  transition: translate .55s var(--molla); transition-delay: calc(var(--k) * 30ms);
+}
+.cartella .fronte {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 72%; padding: 10px 12px 11px; border-radius: 4px 4px 6px 6px;
+  display: flex; flex-direction: column; justify-content: flex-end; gap: 1px;
+  background: var(--grana), linear-gradient(172deg, #F3E3B9 0%, #EBD6A3 55%, #E3CC95 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55), 0 -3px 8px rgba(60, 40, 10, .10);
+  transform-origin: 50% 100%; transition: transform .55s var(--molla); overflow: hidden;
+}
+.cartella .fronte::before {                 /* un alone sul cartoncino, di tanto in tanto: in alto a destra, lontano dall'etichetta */
+  content: ""; position: absolute; left: calc(50% + var(--mx) * .3); top: calc(var(--my) * .5 - 26%); width: calc(var(--ms) * 1.1); aspect-ratio: 1; rotate: var(--mr);
+  background: var(--segno, none) center / contain no-repeat; mix-blend-mode: multiply; pointer-events: none;
+}
+.cartella b { position: relative; font: 700 1.3rem/1.05 var(--mano); }
+.cartella small { position: relative; font: .74rem var(--comandi); color: rgba(59, 47, 27, .7); }
+.cartella:hover, .cartella:focus-visible { translate: 0 -4px; z-index: 2; }
+.cartella:hover .fronte, .cartella:focus-visible .fronte { transform: rotateX(-17deg); }
+.cartella:hover .fogli i, .cartella:focus-visible .fogli i { translate: 0 -9px; }
+.cartella:active { scale: .985; transition-duration: .15s; }
+.cartella.apre .fronte { transform: rotateX(-46deg); transition-duration: .3s; }
+.cartella.apre .fogli i { translate: 0 -22px; transition-duration: .3s; }
+.notte .cartella { filter: brightness(.74) saturate(.8) drop-shadow(0 1px 1px rgba(0, 0, 0, .5)) drop-shadow(0 9px 9px rgba(0, 0, 0, .45)); }
+#luogo { display: none; font: italic 600 1.3rem/1 var(--scrittura); padding-left: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+[data-vista="bacheca"][data-cartella="1"] #indietro { display: grid; }
+[data-vista="bacheca"][data-cartella="1"] #luogo { display: block; }
+[data-vista="bacheca"][data-cartella="1"] #marchio { display: none; }
 
 /* Un foglietto vero: quadrato, incollato in alto e un po' storto, con la carta che si
    solleva in basso (ombra più lunga a sinistra) e un'orecchia piegata nell'angolo destro. */
@@ -130,18 +204,31 @@ button { cursor: pointer; background: none; border: 0; padding: 0; -webkit-tap-h
   position: relative; aspect-ratio: 1; min-width: 0; cursor: pointer;
   rotate: var(--r); translate: var(--dx) var(--dy); transform-origin: 50% 6%;
   filter: drop-shadow(0 1px 1px rgba(var(--ombra), .30)) drop-shadow(1px 8px 7px rgba(var(--ombra), .22));
-  transition: rotate .18s, translate .18s, filter .18s;
+  transition: rotate .55s var(--molla), translate .55s var(--molla), scale .35s var(--molla);
+}
+.nota::after {                              /* l'ombra del foglietto sollevato: cambia solo l'opacità, costa poco */
+  content: ""; position: absolute; z-index: -1; inset: 12% 8% -2% 8%; border-radius: 8px;
+  background: rgba(var(--ombra), .5); filter: blur(16px); opacity: 0; translate: 0 8px;
+  transition: opacity .4s ease, translate .55s var(--molla); pointer-events: none;
 }
 .nota::before {
   content: ""; position: absolute; z-index: -1; left: 3%; bottom: 2%; width: 52%; height: 16%;
   background: rgba(var(--ombra), .62); filter: blur(6px); rotate: -5deg; translate: -1px 6px; transform-origin: 0 100%;
 }
-.nota:hover, .nota:focus-visible {
-  rotate: 0deg; translate: 0 -3px; z-index: 2;
-  filter: drop-shadow(0 1px 1px rgba(var(--ombra), .30)) drop-shadow(2px 16px 13px rgba(var(--ombra), .30));
-}
+.nota:hover, .nota:focus-visible { rotate: calc(var(--r) * .3); translate: var(--dx) calc(var(--dy) - 7px); scale: 1.03; z-index: 2; }
+.nota:hover::after, .nota:focus-visible::after { opacity: .75; translate: 0 18px; }
+.nota:active { scale: .985; transition-duration: .15s; }
+/* entrata: i foglietti si posano, uno dopo l'altro (solo quando si cambia vista) */
+@keyframes posa { from { opacity: 0; translate: var(--dx) calc(var(--dy) - 24px); rotate: calc(var(--r) - 7deg); scale: 1.05; } }
+.anima :is(.nota, .cartella) { animation: posa .6s var(--morbido) backwards; animation-delay: calc(min(var(--i, 0), 22) * 26ms); }
+/* uscita: il foglietto si stacca e cade */
+@keyframes via { to { opacity: 0; translate: var(--dx) calc(var(--dy) + 46px); rotate: calc(var(--r) + 14deg); scale: .9; } }
+.nota.via { animation: via .4s cubic-bezier(.55, 0, .75, .3) forwards; pointer-events: none; }
+/* la puntina si conficca */
+@keyframes conficca { 0% { opacity: 0; translate: -50% -26px; scale: 1.6; } 60% { opacity: 1; translate: -50% 2px; scale: .94; } }
+.nota .puntina.conficcata { animation: conficca .55s var(--molla) backwards; }
 .nota .faccia {
-  position: absolute; inset: 0; overflow: hidden; padding: 17px 14px 6px; color: #1B2224; text-align: left;
+  position: absolute; inset: 0; overflow: hidden; padding: 17px 14px 6px; color: #1B2224; text-align: left; isolation: isolate;
   display: flex; flex-direction: column;
   font: 400 1.04rem/1.27 var(--mano);
   background:
@@ -149,6 +236,19 @@ button { cursor: pointer; background: none; border: 0; padding: 0; -webkit-tap-h
     linear-gradient(166deg, rgba(255, 255, 255, .38) 0%, rgba(255, 255, 255, 0) 28%, rgba(0, 0, 0, 0) 60%, rgba(0, 0, 0, .085) 100%),
     var(--c);
   clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--e)), calc(100% - var(--e)) 100%, 0 100%);
+}
+/* Segni di vita, su qualche foglietto: un alone di caffè, una gocciolina, una piega */
+.nota .faccia > * { position: relative; z-index: 1; }
+.nota .faccia::before {
+  content: ""; position: absolute; z-index: 0; left: var(--mx); top: var(--my); width: var(--ms); aspect-ratio: 1; rotate: var(--mr);
+  background: var(--segno, none) center / contain no-repeat; mix-blend-mode: multiply; pointer-events: none;
+}
+.m-anello { --segno: var(--anello); }  .m-rotto { --segno: var(--rotto); }  .m-goccia { --segno: var(--goccia); }
+.nota.m-piega .faccia::after {
+  content: ""; position: absolute; z-index: 0; inset: 0; pointer-events: none;
+  background:
+    linear-gradient(var(--pa), transparent calc(50% - 2px), rgba(0, 0, 0, .07) calc(50% - .5px), rgba(255, 255, 255, .5) calc(50% + .5px), transparent calc(50% + 3px)),
+    linear-gradient(var(--pa), rgba(0, 0, 0, .028) 0 50%, rgba(255, 255, 255, .05) 50% 100%);
 }
 .nota .orecchia {                           /* il rovescio dell'angolo piegato */
   position: absolute; right: 0; bottom: 0; width: var(--e); height: var(--e); pointer-events: none;
@@ -159,11 +259,8 @@ button { cursor: pointer; background: none; border: 0; padding: 0; -webkit-tap-h
 [data-colore="rosa"] { --c: var(--rosa); }      [data-colore="lilla"] { --c: var(--lilla); }
 [data-colore="azzurro"] { --c: var(--azzurro); } [data-colore="verde"] { --c: var(--verde); }
 [data-colore="carta"] { --c: var(--carta); }    [data-colore="grigio"] { --c: var(--grigio); }
-@media (prefers-color-scheme: dark) {
-  .nota { filter: brightness(.86) saturate(.92) drop-shadow(0 1px 1px rgba(0, 0, 0, .5)) drop-shadow(1px 8px 7px rgba(0, 0, 0, .45)); }
-  .nota:hover, .nota:focus-visible { filter: brightness(.9) saturate(.92) drop-shadow(0 1px 1px rgba(0, 0, 0, .5)) drop-shadow(2px 16px 13px rgba(0, 0, 0, .55)); }
-  .campione { filter: brightness(.86) saturate(.92); }
-}
+.notte .nota { filter: brightness(.82) saturate(.88) drop-shadow(0 1px 1px rgba(0, 0, 0, .5)) drop-shadow(1px 8px 7px rgba(0, 0, 0, .45)); }
+.notte .campione { filter: brightness(.86) saturate(.92); }
 
 .nota h3 { flex: none; margin: 0 14px 3px 0; font: 700 1.14rem/1.18 var(--mano); overflow-wrap: anywhere; }
 .anteprima {                                /* il testo sfuma prima della data */
@@ -177,7 +274,8 @@ button { cursor: pointer; background: none; border: 0; padding: 0; -webkit-tap-h
 .anteprima :is(h1, h2, h3, h4, h5, h6) { font-size: 1em; font-weight: 700; }
 .anteprima :is(ul, ol) { padding-left: 1.1em; }
 .anteprima blockquote { padding-left: .55em; border-left: 2px solid rgba(0, 0, 0, .3); }
-.anteprima pre { font: .78em/1.3 ui-monospace, Menlo, Consolas, monospace; white-space: pre-wrap; }
+.anteprima pre { font: .78em/1.3 var(--fissa); white-space: pre-wrap; }
+.anteprima.fissa { font: .76em/1.42 var(--fissa); white-space: pre-wrap; overflow-wrap: anywhere; }
 .anteprima [style*="justify"] { text-align: left !important; }
 .anteprima img { display: none; }
 .anteprima a { color: inherit; pointer-events: none; }
@@ -212,7 +310,11 @@ button { cursor: pointer; background: none; border: 0; padding: 0; -webkit-tap-h
 
 /* ------------------------------------------------------------------ editor */
 #editor { flex: 1; min-height: 0; display: flex; flex-direction: column; background: var(--foglio); border-top: 5px solid var(--c, var(--giallo)); }
-@media (prefers-color-scheme: dark) { #editor { border-top-color: color-mix(in srgb, var(--c, var(--giallo)) 80%, #000); } }
+.notte #editor { border-top-color: color-mix(in srgb, var(--c, var(--giallo)) 80%, #000); }
+@keyframes sale { from { opacity: 0; translate: 0 12px; } }
+[data-vista="editor"] #editor { animation: sale .32s var(--morbido); }
+#editor.fissa :is(#carta, #testo) { font-family: var(--fissa); font-size: 1.02rem; line-height: 1.75; hyphens: manual; }
+#strumenti .mono { font: 700 1rem/1 var(--fissa); }
 #strumenti {
   flex: none; display: flex; align-items: center; gap: 1px; padding: 4px max(8px, env(safe-area-inset-left));
   overflow-x: auto; scrollbar-width: none; border-bottom: 1px solid var(--filo);
@@ -260,7 +362,7 @@ button { cursor: pointer; background: none; border: 0; padding: 0; -webkit-tap-h
 #carta blockquote > :last-child { margin-bottom: 0; }
 #carta a { color: var(--blu); text-decoration-thickness: 1px; text-underline-offset: 2px; }
 #carta hr { border: 0; border-top: 1px solid var(--filo); margin: 1.6em 20%; }
-#carta :is(pre, code) { font: .82em/1.5 ui-monospace, "SF Mono", Menlo, "DejaVu Sans Mono", Consolas, monospace; }
+#carta :is(pre, code) { font: .86em/1.55 var(--fissa); }
 #carta pre { margin: .3em 0 calc(var(--capoverso) + .3em); padding: .7em .9em; background: rgba(var(--ombra), .07); white-space: pre-wrap; overflow-wrap: anywhere; }
 #carta code { background: rgba(var(--ombra), .08); padding: .08em .3em; }
 #carta img { max-width: 100%; height: auto; }
@@ -309,9 +411,7 @@ select.campo { width: auto; }
 /* ------------------------------------------------------------------ schermi interi */
 .schermo {
   position: fixed; inset: 0; z-index: 20; overflow-y: auto; display: grid; place-items: center; padding: 28px 22px;
-  background-color: var(--tavolo);
-  background-image: linear-gradient(var(--quadretto) 1px, transparent 1px), linear-gradient(90deg, var(--quadretto) 1px, transparent 1px);
-  background-size: 20px 20px;
+  background: var(--fondo), var(--tavolo);
 }
 .appeso { width: min(27rem, 100%); rotate: -1.6deg; filter: drop-shadow(0 1px 1px rgba(var(--ombra), .3)) drop-shadow(2px 14px 12px rgba(var(--ombra), .28)); position: relative; }
 .appeso::before {
@@ -329,7 +429,7 @@ select.campo { width: auto; }
   clip-path: polygon(0 0, 100% 0, 100% calc(100% - 38px), calc(100% - 38px) 100%, 0 100%);
   display: flex; flex-direction: column; gap: 14px; --blu: #2B4C9B; --blu-su: #fff; --filo: rgba(0, 0, 0, .28); --tenue: rgba(27, 34, 36, .7); --foglio: #FFFDF0; --rosso: #A32A22;
 }
-@media (prefers-color-scheme: dark) { .appeso { filter: brightness(.9) drop-shadow(0 1px 1px rgba(0, 0, 0, .5)) drop-shadow(2px 14px 12px rgba(0, 0, 0, .5)); } }
+.notte .appeso { filter: brightness(.9) drop-shadow(0 1px 1px rgba(0, 0, 0, .5)) drop-shadow(2px 14px 12px rgba(0, 0, 0, .5)); }
 .biglietto h1 { margin: 0; font: 600 italic 2.5rem/1 var(--scrittura); letter-spacing: -.02em; }
 .biglietto p { margin: 0; font: 1.06rem/1.5 var(--scrittura); }
 .biglietto .piccolo { font: .86rem/1.45 var(--comandi); color: var(--tenue); }
@@ -339,6 +439,12 @@ select.campo { width: auto; }
 .biglietto .errore { color: var(--rosso); font: 600 .9rem var(--comandi); min-height: 1.3em; }
 .scossa { animation: scossa .3s; }
 @keyframes scossa { 25% { translate: -6px 0; } 75% { translate: 6px 0; } }
+
+/* impostazioni: campioni dello sfondo */
+.sfondi { display: flex; flex-wrap: wrap; gap: 10px; }
+.sfondi button { width: 44px; height: 44px; border-radius: 50%; background: var(--fondo), var(--s); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .14); }
+.sfondi button[aria-checked="true"] { box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .14), 0 0 0 2px var(--foglio), 0 0 0 4px var(--blu); }
+.sfondi button[data-v="quadretti"] { background-image: linear-gradient(#C3CDCF 1px, transparent 1px), linear-gradient(90deg, #C3CDCF 1px, transparent 1px); background-size: 9px 9px; background-color: #E7ECEC; }
 
 /* benvenuto: passi, etichette */
 .biglietto .passi { margin: 0; padding-left: 1.3em; display: grid; gap: 6px; font: .9rem/1.45 var(--comandi); }
@@ -394,6 +500,7 @@ a.tasto { text-decoration: none; color: inherit; }
   <header id="barra">
     <button id="indietro" class="icona" aria-label="Torna alla bacheca"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
     <span id="marchio">BiaWrite</span>
+    <span id="luogo" aria-live="polite"></span>
     <input id="cerca" type="search" placeholder="Cerca" aria-label="Cerca nelle note" autocomplete="off">
     <button id="stato" data-s="locale"><i></i><span></span></button>
     <button id="copia" class="tasto bordo" title="Copia tutta la nota con la formattazione">Copia</button>
@@ -423,6 +530,7 @@ a.tasto { text-decoration: none; color: inherit; }
       <button data-c="insertUnorderedList" aria-label="Elenco puntato" title="Elenco puntato"><svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r=".6"/><circle cx="4.5" cy="12" r=".6"/><circle cx="4.5" cy="18" r=".6"/></svg></button>
       <button data-c="insertOrderedList" aria-label="Elenco numerato" title="Elenco numerato"><svg viewBox="0 0 24 24"><path d="M10 6h10M10 12h10M10 18h10M4 4.5l1.2-.7v4.4M3.6 14.4c.3-.9 2.6-1 2.6.3 0 .9-1.6 1.4-2.6 2.9h2.8"/></svg></button>
       <button data-c="quote" aria-label="Citazione" title="Citazione"><svg viewBox="0 0 24 24"><path d="M5 5v14M10 8h10M10 12h10M10 16h6"/></svg></button>
+      <button data-c="pre" aria-label="Blocco a spaziatura fissa" title="Blocco a spaziatura fissa"><span class="mono">M</span></button>
       <button data-c="link" aria-label="Collegamento" title="Collegamento"><svg viewBox="0 0 24 24"><path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1"/></svg></button>
       <span class="stacco"></span>
       <button data-c="removeFormat" aria-label="Togli la formattazione" title="Togli la formattazione"><svg viewBox="0 0 24 24"><path d="M7 5h11M12.5 5l-3 14M5 19h6M15 14l5 5M20 14l-5 5"/></svg></button>

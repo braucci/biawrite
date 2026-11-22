@@ -8,7 +8,7 @@
 (() => {
   'use strict';
 
-  const VERSIONE = '1.5.0';
+  const VERSIONE = '1.6.0';
   const CFG = Object.assign({ repository: 'biawrite-note', cartella: 'note' }, window.BIAWRITE_CONFIG || {});
   const COLORI = ['giallo', 'arancio', 'rosa', 'lilla', 'azzurro', 'verde', 'carta', 'grigio'];
   const NOMI_COLORI = { giallo: 'Giallo', arancio: 'Arancio', rosa: 'Rosa', lilla: 'Lilla', azzurro: 'Azzurro', verde: 'Verde', carta: 'Bianco', grigio: 'Grigio' };
@@ -176,38 +176,140 @@
   const osservatore = 'IntersectionObserver' in window
     ? new IntersectionObserver(v => { if (v.some(x => x.isIntersecting)) { limite += PASSO; disegna(); } }, { root: $('#bacheca'), rootMargin: '900px 0px' })
     : null;
-  function disegna() {
+  /* Segni di vita su qualche foglietto (sempre gli stessi per la stessa nota): un alone di caffè,
+   * un alone interrotto, una gocciolina; a parte, una piega. */
+  function segni(id, soloAloni) {
+    let h = 0x9747b28c;
+    for (const c of String(id)) h = Math.imul(h ^ c.charCodeAt(0), 0x01000193) >>> 0;
+    h = Math.imul(h ^ (h >>> 15), 0x2c1b3c6d) >>> 0;
+    h = Math.imul(h ^ (h >>> 12), 0x297a2d39) >>> 0;
+    const u = k => ((h >>> k) & 255) / 255;
+    let cls = '', st = '';
+    const t = u(0);
+    if (t < .13) cls = ' m-anello'; else if (t < .21) cls = ' m-rotto'; else if (t < .28 && !soloAloni) cls = ' m-goccia';
+    if (cls) st = ';--mx:' + Math.round(u(8) * 78 - 10) + '%;--my:' + Math.round(u(16) * 34 + 36) + '%;--ms:' + Math.round((cls === ' m-goccia' ? 26 : 30) + u(24) * 16) + '%;--mr:' + Math.round(u(4) * 360) + 'deg';
+    if (!soloAloni && u(20) < .13) { cls += ' m-piega'; st += ';--pa:' + Math.round(25 + u(12) * 130) + 'deg'; }
+    return { cls, st };
+  }
+  const MESI = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
+  /* La cartella di una nota è il mese in cui è nata: non cambia quando la si ritocca. */
+  const mese = n => { const d = new Date(n.creata || n.modified); return d.getFullYear() + '-' + due(d.getMonth() + 1); };
+  const nomeMese = m => MESI[+m.slice(5) - 1] + ' ' + m.slice(0, 4);
+  let cartellaAperta = null, scrollRadice = 0, appenaFissata = null, timerAnima = 0;
+  const ridotto = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const perMesi = () => S.bacheca !== 'tutte';
+
+  /* Inclinazione e macchie dipendono da qualcosa che è uguale su tutti i dispositivi (la data di
+   * nascita, sincronizzata nell'indice): lo stesso foglietto ha lo stesso aspetto sul Mac e sul telefono. */
+  const impronta = n => n.creata ? 'c' + n.creata : 'n' + n.name;
+  const fissaPer = txt => S.fisso === 'sempre' || ((S.fisso || 'txt') === 'txt' && txt);
+  function scheda(n, i, data) {
+    const ext = estensione(n.name);
+    const fuori = collegato() && (n.dirty || n.metaDirty || !n.path);
+    const m = segni(impronta(n));
+    return '<article class="nota' + (n.pinned ? ' fissata' : '') + m.cls + '" data-id="' + escA(n.id) + '" data-colore="' + escA(n.color) +
+      '" style="' + posa(impronta(n)) + m.st + ';--i:' + i + '" tabindex="0" role="button" aria-label="' +
+      escA('Apri: ' + titoloDi(n) + (n.pinned ? ' (fissata in alto)' : '')) + '">' +
+      (n.pinned ? '<svg class="puntina' + (n.id === appenaFissata ? ' conficcata' : '') + '" viewBox="0 0 34 40" aria-hidden="true"><use href="#puntina"/></svg>' : '') +
+      '<div class="faccia">' + (n.autoName ? '' : '<h3>' + esc(titoloDi(n)) + '</h3>') +
+      '<div class="anteprima' + (fissaPer(ext === 'txt') ? ' fissa' : '') + '">' + anteprima(n) + '</div><footer>' +
+      (fuori ? '<span class="segno" title="Non ancora su GitHub"></span>' : '') +
+      '<time>' + esc(quando(data === 'creata' ? n.creata || n.modified : n.modified)) + '</time>' + (ext === 'txt' ? '<span>.txt</span>' : '') + '</footer></div><i class="orecchia"></i>' +
+      '<button class="altro" aria-label="Colore, nome, elimina" aria-haspopup="menu"><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="12" cy="19" r="1.7"/></svg></button>' +
+      '</article>';
+  }
+  function cartellaHtml(m, lista, i) {
+    let h = 0;
+    for (const c of m) h = Math.imul(h ^ c.charCodeAt(0), 16777619) >>> 0;
+    const r = ((h & 255) / 255 * 2 - 1) * 1.4;
+    const colori = lista.slice().sort((a, b) => b.modified - a.modified).slice(0, 4).map(n => n.color);
+    const sg = segni('cartella' + m, true);
+    return '<button class="cartella' + sg.cls + '" data-mese="' + m + '" style="--r:' + r.toFixed(2) + 'deg;--i:' + i + sg.st + '" aria-label="' +
+      escA(nomeMese(m) + ', ' + quanti(lista.length)) + '"><span class="retro"></span><span class="fogli">' +
+      colori.map((c, k) => '<i data-colore="' + escA(c) + '" style="--k:' + k + '"></i>').join('') +
+      '</span><span class="fronte"><b>' + MESI[+m.slice(5) - 1] + '</b><small>' + quanti(lista.length) + '</small></span></button>';
+  }
+
+  /* Tre modi: la radice (puntine in testa, poi anni e cartelle dei mesi), l'interno di una cartella,
+   * e l'elenco piatto (ricerca, oppure bacheca «tutte insieme»). */
+  function disegna(opz) {
     const q = elCerca.value.trim().toLowerCase();
-    const elenco = [...note.values()].filter(n => !n.deleted)
-      .filter(n => !q || n.name.toLowerCase().includes(q) || n.content.toLowerCase().includes(q))
-      .sort((a, b) => (!!b.pinned - !!a.pinned) || b.modified - a.modified);      // le fissate in testa
-    const gh = collegato();
-    const fissate = elenco.filter(n => n.pinned).length;
+    const vive = [...note.values()].filter(n => !n.deleted);
+    if (cartellaAperta && !vive.some(n => mese(n) === cartellaAperta)) cartellaAperta = null;     // cartella rimasta vuota
+    const modo = q ? 'ricerca' : !perMesi() ? 'tutte' : cartellaAperta ? 'cartella' : 'radice';
+    app.dataset.cartella = modo === 'cartella' ? '1' : '';
+    $('#luogo').textContent = modo === 'cartella' ? nomeMese(cartellaAperta) : '';
     if (osservatore) osservatore.disconnect();
-    const tutti = elenco.length;
-    if (osservatore) elenco.splice(limite);
-    elNote.innerHTML = elenco.map((n, i) => {
-      const ext = estensione(n.name);
-      const fuori = gh && (n.dirty || n.metaDirty || !n.path);
-      return (i === fissate && fissate ? '<div class="stacco-fissate" aria-hidden="true"></div>' : '') +
-        '<article class="nota' + (n.pinned ? ' fissata' : '') + '" data-id="' + escA(n.id) + '" data-colore="' + escA(n.color) + '" style="' + posa(n.id) + '" tabindex="0" role="button" aria-label="' +
-        escA('Apri: ' + titoloDi(n) + (n.pinned ? ' (fissata in alto)' : '')) + '">' +
-        (n.pinned ? '<svg class="puntina" viewBox="0 0 34 40" aria-hidden="true"><use href="#puntina"/></svg>' : '') + '<div class="faccia">' + (n.autoName ? '' : '<h3>' + esc(titoloDi(n)) + '</h3>') +
-        '<div class="anteprima">' + anteprima(n) + '</div><footer>' +
-        (fuori ? '<span class="segno" title="Non ancora su GitHub"></span>' : '') +
-        '<time>' + esc(quando(n.modified)) + '</time>' + (ext === 'txt' ? '<span>.txt</span>' : '') + '</footer></div><i class="orecchia"></i>' +
-        '<button class="altro" aria-label="Colore, nome, elimina" aria-haspopup="menu"><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="12" cy="19" r="1.7"/></svg></button>' +
-        '</article>';
-    }).join('') + (tutti > elenco.length ? '<div class="ancora" aria-hidden="true"></div>' : '');
-    if (osservatore && tutti > elenco.length) osservatore.observe(elNote.querySelector('.ancora'));
-    elVuoto.hidden = elenco.length > 0;
-    if (!elenco.length) {
+    clearTimeout(timerAnima);
+    elNote.classList.toggle('anima', !!(opz && opz.anima) && !ridotto());
+    if (elNote.classList.contains('anima')) timerAnima = setTimeout(() => elNote.classList.remove('anima'), 1300);
+    let html = '', quante = 0;
+    if (modo === 'radice') {
+      const fissate = vive.filter(n => n.pinned).sort((a, b) => b.modified - a.modified);
+      const gruppi = new Map();
+      for (const n of vive) { const m = mese(n); if (!gruppi.has(m)) gruppi.set(m, []); gruppi.get(m).push(n); }
+      const mesi = [...gruppi.keys()].sort().reverse();
+      let k = 0;
+      if (fissate.length) html += '<div class="griglia fissate">' + fissate.map(n => scheda(n, k++)).join('') + '</div>';
+      let anno = null;
+      for (const m of mesi) {
+        const a = m.slice(0, 4);
+        if (a !== anno) {
+          if (anno) html += '</div>';
+          anno = a;
+          const tot = mesi.filter(x => x.startsWith(a)).reduce((t, x) => t + gruppi.get(x).length, 0);
+          html += '<h2 class="anno">' + a + ' <small>' + quanti(tot) + '</small></h2><div class="griglia cartelle">';
+        }
+        html += cartellaHtml(m, gruppi.get(m), k++);
+      }
+      if (anno) html += '</div>';
+      quante = vive.length;
+    } else {
+      let elenco;
+      if (modo === 'cartella') elenco = vive.filter(n => mese(n) === cartellaAperta).sort((a, b) => (!!b.pinned - !!a.pinned) || (b.creata || b.modified) - (a.creata || a.modified));
+      else elenco = vive.filter(n => !q || n.name.toLowerCase().includes(q) || n.content.toLowerCase().includes(q))
+        .sort((a, b) => (!!b.pinned - !!a.pinned) || b.modified - a.modified);
+      const fissate = elenco.filter(n => n.pinned).length;
+      const tutti = elenco.length;
+      if (osservatore) elenco.splice(limite);
+      html = '<div class="griglia">' + elenco.map((n, i) => (i === fissate && fissate ? '<div class="stacco-fissate" aria-hidden="true"></div>' : '') +
+        scheda(n, i, modo === 'cartella' ? 'creata' : 'modificata')).join('') +
+        (tutti > elenco.length ? '<div class="ancora" aria-hidden="true"></div>' : '') + '</div>';
+      quante = elenco.length;
+    }
+    elNote.innerHTML = html;
+    appenaFissata = null;
+    const ancora = elNote.querySelector('.ancora');
+    if (osservatore && ancora) osservatore.observe(ancora);
+    elVuoto.hidden = quante > 0;
+    if (!quante) {
       if (q) elVuoto.textContent = 'Nessuna nota contiene «' + elCerca.value.trim() + '».';
       else elVuoto.innerHTML = 'Nessuna nota ancora. Tocca «Nuova nota» per cominciare, oppure <button class="filo" id="vuoto-importa">importa le vecchie note</button>.';
     }
   }
 
+  /* Entrare in una cartella: il davanti si apre, i foglietti si alzano, poi la vista cambia. */
+  function apriCartella(m, el) {
+    const vai = () => {
+      scrollRadice = $('#bacheca').scrollTop;
+      history.pushState({ cartella: m }, '');
+      cartellaAperta = m; limite = PASSO;
+      disegna({ anima: true });
+      $('#bacheca').scrollTop = 0;
+    };
+    if (el && !ridotto()) { el.classList.add('apre'); setTimeout(vai, 230); } else vai();
+  }
+  function vaiACartella(m, sostituisci) {
+    if (!perMesi() || m === cartellaAperta) return;
+    if (!cartellaAperta) scrollRadice = $('#bacheca').scrollTop;
+    history[sostituisci ? 'replaceState' : 'pushState']({ cartella: m }, '');
+    cartellaAperta = m; limite = PASSO;
+    $('#bacheca').scrollTop = 0;
+  }
+
   elNote.addEventListener('click', e => {
+    const c = e.target.closest('.cartella');
+    if (c) { apriCartella(c.dataset.mese, c); return; }
     const el = e.target.closest('.nota');
     if (!el) return;
     const n = note.get(el.dataset.id);
@@ -230,6 +332,7 @@
     salvaS();
     const n = { id: nuovoId(), path: null, sha: null, name: nomeLibero(nomeData(ora) + '.' + ext, null, ultimaIst),
       content: '', color: COLORI[S.giro], creata: ora, modified: ora, autoName: true, dirty: false, metaDirty: false, deleted: false, rev: 0 };
+    Object.defineProperty(n, 'nata', { value: true, writable: true, configurable: true, enumerable: false });   // solo in questa sessione
     note.set(n.id, n);
     DB.metti(n);
     apri(n, true);
@@ -241,6 +344,7 @@
     aperta = n; sporco = false;
     const txt = estensione(n.name) === 'txt';
     editor.classList.toggle('semplice', txt);
+    editor.classList.toggle('fissa', fissaPer(txt));
     editor.dataset.colore = n.color;
     titolo.value = n.autoName ? '' : titoloDi(n);
     $('#estensione').textContent = '.' + estensione(n.name);
@@ -344,14 +448,25 @@
     conferma();
     aperta = null;
     liberaImmagini();
-    if (!n.content.trim() && n.autoName && !n.path) { note.delete(n.id); DB.togli(n.id); }     // nota nuova lasciata vuota
+    const vuota = !n.content.trim() && n.autoName && !n.path;
+    if (vuota) { note.delete(n.id); DB.togli(n.id); }                                         // nota nuova lasciata vuota
     app.dataset.vista = 'bacheca';
+    if (!vuota && n.nata && perMesi() && !elCerca.value.trim() && mese(n) !== cartellaAperta) vaiACartella(mese(n), !!cartellaAperta);
+    delete n.nata;
     disegna();
     aggiornaStato();
     if (collegato()) sync();
   }
   $('#indietro').addEventListener('click', () => history.back());
-  window.addEventListener('popstate', () => { if (aperta) chiudi(); });
+  window.addEventListener('popstate', e => {
+    if (aperta) { chiudi(); return; }
+    const c = (e.state && e.state.cartella) || null;
+    if (c !== cartellaAperta) {
+      cartellaAperta = c; limite = PASSO;
+      disegna({ anima: true });
+      $('#bacheca').scrollTop = c ? 0 : scrollRadice;
+    }
+  });
   function chiudiPerForza(messaggio) {
     if (!aperta) return;
     sporco = false; clearTimeout(timerScrivi); timerScrivi = 0; aperta = null;
@@ -432,6 +547,8 @@
         if (sciolto) { const p = document.createElement('p'); while (q.firstChild) p.appendChild(q.firstChild); q.replaceWith(p); }
         else { while (q.firstChild) q.parentNode.insertBefore(q.firstChild, q); q.remove(); }
       });
+    } else if (c === 'pre') {
+      document.execCommand('formatBlock', false, antenato('PRE') ? 'p' : 'pre');
     } else if (c === 'link') {
       const s = getSelection();
       const r = s.rangeCount ? s.getRangeAt(0).cloneRange() : null;
@@ -464,6 +581,7 @@
           if (c === 'h2' || c === 'h3') on = !!antenato(c.toUpperCase());
           else if (c === 'quote') on = !!antenato('BLOCKQUOTE');
           else if (c === 'link') on = !!antenato('A');
+          else if (c === 'pre') on = !!antenato('PRE');
           else if (c === 'underline') on = !!antenato('U') || (!antenato('A') && document.queryCommandState(c));
           else if (c !== 'removeFormat') on = document.queryCommandState(c);
         } catch (e) { on = false; }
@@ -551,6 +669,7 @@
   /* La puntina: la nota resta in testa alla bacheca, su tutti i dispositivi. Non cambia la data. */
   function fissa(n) {
     n.pinned = !n.pinned; n.metaDirty = true;
+    if (n.pinned) appenaFissata = n.id;
     toccata(n);
     if (n === aperta) avviso(n.pinned ? 'Fissata in alto nella bacheca.' : 'Puntina tolta.');
   }
@@ -586,6 +705,8 @@
       ok: 'Elimina', rosso: true });
     if (!ok) return;
     if (n === aperta) chiudiPerForza();
+    const el = elNote.querySelector('.nota[data-id="' + CSS.escape(n.id) + '"]');
+    if (el && !ridotto()) { el.classList.add('via'); await new Promise(r => setTimeout(r, 380)); }
     n.deleted = true;
     if (!n.path || !collegato()) { note.delete(n.id); DB.togli(n.id); }
     else { DB.metti(n); programmaSync(); }
@@ -669,7 +790,7 @@
     const auto = !!(m && m.auto);
     const mod = (m && Date.parse(m.mod)) || n.modified;
     const fissata = !!(m && m.fissata);
-    const creata = (m && Date.parse(m.creata)) || n.creata;
+    const creata = (m && (Date.parse(m.creata) || Date.parse(m.mod))) || n.creata;      // senza «creata» l'indice dice che coincide con la modifica
     const bear = (m && m.bear) || n.bear;
     if (col === n.color && auto === n.autoName && mod === n.modified && fissata === !!n.pinned && creata === n.creata && bear === n.bear) return false;
     n.color = col; n.autoName = auto; n.modified = mod; n.pinned = fissata; n.creata = creata; n.bear = bear;
@@ -1408,14 +1529,31 @@
       '<div class="fila"><button class="tasto bordo" data-a="pin">' + (S.lock ? 'Cambia PIN' : 'Imposta un PIN') + '</button>' +
       (S.lock && bio ? '<button class="tasto bordo" data-a="bio">' + (S.lock.bio ? 'Disattiva impronta o volto' : 'Attiva impronta o volto') + '</button>' : '') +
       (S.lock ? '<button class="tasto rosso" data-a="sblocca">Togli il blocco</button>' : '') + '</div>' +
+      '<h3>Aspetto</h3>' +
+      '<div class="fila"><select class="campo" id="tema" aria-label="Giorno o notte"><option value="auto">Giorno e notte come il dispositivo</option><option value="giorno">Sempre giorno</option><option value="notte">Sempre notte</option></select></div>' +
+      '<div class="sfondi" role="radiogroup" aria-label="Sfondo">' + [['salvia', 'Salvia', '#E2EAE0'], ['cielo', 'Cielo', '#DFE8F0'], ['cipria', 'Cipria', '#EFE3E2'], ['lavanda', 'Lavanda', '#E6E2EF'], ['menta', 'Menta', '#DBEBE5'], ['quadretti', 'Quadretti', '#E7ECEC']]
+        .map(([v, t, c]) => '<button role="radio" data-v="' + v + '" title="' + t + '" aria-label="' + t + '" aria-checked="' + ((S.sfondo || 'salvia') === v) + '" style="--s:' + c + '"></button>').join('') + '</div>' +
+      '<div class="fila"><select class="campo" id="ordine" aria-label="Bacheca"><option value="mesi">Bacheca in cartelle, una per mese</option><option value="tutte">Bacheca con tutte le note insieme</option></select></div>' +
       '<h3>Scrittura</h3>' +
       '<div class="fila"><select class="campo" id="spazio" aria-label="Spazio fra i capoversi">' +
         '<option value="stretto">Capoversi appena staccati</option><option value="nessuno">Capoversi senza spazio, come a macchina</option>' +
         '<option value="rientro">Capoversi con rientro, come nei libri</option><option value="ampio">Capoversi ben staccati, come in un blog</option></select></div>' +
       '<p class="nota-bene">Cambia solo l\'aspetto qui: nel file e in WordPress ogni Invio resta un capoverso. Per andare a capo dentro lo stesso capoverso (una poesia, un indirizzo) usa Maiuscolo+Invio.</p>' +
+      '<div class="fila"><select class="campo" id="fisso" aria-label="Carattere a spaziatura fissa"><option value="mai">Carattere normale in tutte le note</option><option value="txt">Spaziatura fissa nelle note di testo (.txt)</option><option value="sempre">Spaziatura fissa in tutte le note</option></select></div>' +
       '<div class="fila"><select class="campo" id="formato" aria-label="Formato delle nuove note"><option value="md">Nuove note in Markdown (.md), con formattazione</option><option value="txt">Nuove note in testo semplice (.txt)</option></select></div>' +
       '<p class="nota-bene">BiaWrite ' + VERSIONE + '</p>' +
       '<div class="azioni"><button class="tasto pieno" data-a="chiudi">Chiudi</button></div>';
+    const tema = () => { if (window.BiaTema) BiaTema.applica(S); };
+    $('#tema', c).value = S.tema || 'auto';
+    $('#tema', c).onchange = e => { S.tema = e.target.value; salvaS(); tema(); };
+    c.querySelectorAll('.sfondi button').forEach(b => b.onclick = () => {
+      S.sfondo = b.dataset.v; salvaS(); tema();
+      c.querySelectorAll('.sfondi button').forEach(x => x.setAttribute('aria-checked', String(x === b)));
+    });
+    $('#ordine', c).value = perMesi() ? 'mesi' : 'tutte';
+    $('#ordine', c).onchange = e => { S.bacheca = e.target.value; salvaS(); cartellaAperta = null; history.replaceState({ bacheca: true }, ''); limite = PASSO; disegna({ anima: true }); };
+    $('#fisso', c).value = S.fisso || 'txt';
+    $('#fisso', c).onchange = e => { S.fisso = e.target.value; salvaS(); disegna(); };
     $('#spazio', c).value = S.spazio || 'stretto';
     $('#spazio', c).onchange = e => { S.spazio = e.target.value; salvaS(); carta.dataset.spazio = S.spazio; };
     $('#formato', c).value = S.formato === 'txt' ? 'txt' : 'md';
@@ -1477,7 +1615,8 @@
     if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
       navigator.serviceWorker.register('sw.js').catch(() => {});
     }
-    history.replaceState({ bacheca: true }, '');
+    const st = history.state;                                                   // ricaricando dentro una cartella, vi si resta
+    if (st && st.cartella && perMesi()) cartellaAperta = st.cartella; else history.replaceState({ bacheca: true }, '');
     let tutte = [];
     try { tutte = (await DB.tutte()) || []; } catch (e) { console.warn('archivio', e); }
     tutte.forEach(n => {

@@ -10,9 +10,14 @@ Si pubblica su GitHub Pages e parla soltanto con GitHub.
 ## Che cosa fa
 
 - **Bacheca** di foglietti scritti a mano, ognuno attaccato a modo suo, con anteprima, colore e ricerca.
-  Con una **puntina** un foglietto resta sempre in testa, su tutti i dispositivi.
+  Le note sono raccolte in **cartelle, una per mese**, divise per anno; con una **puntina** un foglietto
+  resta sempre in testa, fuori dalle cartelle, su tutti i dispositivi. Qualche foglietto porta l'alone
+  di una tazza o la piega di una tasca, come quelli veri.
+- **Giorno e notte**: tema chiaro, scuro o come il dispositivo; tavolo color pastello (salvia, cielo,
+  cipria, lavanda, menta) o, per chi li preferisce, i quadretti.
 - **Editor** essenziale: grassetto, corsivo, sottolineato, allineamento (sinistra, centro, destra,
-  giustificato), titoli, elenchi, citazioni, collegamenti. Oppure testo semplice, per i `.txt`.
+  giustificato), titoli, elenchi, citazioni, collegamenti, blocchi a spaziatura fissa. Oppure testo
+  semplice, per i `.txt`, scritto a **spaziatura fissa** (IBM Plex Mono) come su una macchina da scrivere.
 - **Salvataggio automatico**: ogni modifica va subito nell'archivio del browser e, dopo tre secondi di
   pausa, nel repository. Senza rete si continua a scrivere; alla riconnessione parte tutto da sé.
 - **Copia** con un tocco: tutta la nota negli appunti come testo formattato, pronta da incollare
@@ -147,6 +152,21 @@ allineamento o un sottolineato non arrivano, si riapplicano lì con un clic.
   non è cifrata. Il PIN non si recupera: si azzera l'app su quel dispositivo e si incolla di nuovo una
   chiave (le note su GitHub non si toccano).
 - **Senza blocco** la chiave è conservata in chiaro nel browser: le impostazioni lo dicono.
+- **Le cartelle dei mesi.** Una nota sta nella cartella del mese in cui è nata, e lì resta anche quando
+  la si ritocca: le cartelle non si svuotano e non si riempiono da sole. Dentro, le note vanno dalla più
+  recente alla più vecchia per data di nascita (la data sul foglietto è quella). Una nota nuova, appena
+  chiusa, porta nella cartella del mese corrente. La freccia in alto, o il tasto «indietro» del telefono,
+  riporta alla radice; la ricerca guarda in tutte le cartelle insieme. Le cartelle sono solo un modo di
+  guardare: nel repository le note restano tutte in `note/`, come prima. Chi preferisce l'elenco unico
+  lo sceglie in *Impostazioni → Aspetto*.
+- **Spaziatura fissa.** Di serie le note `.txt` (codice, formule, tabelle allineate a spazi) si scrivono
+  e si vedono in IBM Plex Mono, le `.md` nel carattere normale; in *Impostazioni → Scrittura* si può
+  scegliere la spaziatura fissa per tutte le note o per nessuna. Dentro una nota `.md`, il tasto **M**
+  della barra trasforma il capoverso in un blocco a spaziatura fissa (nel file, un blocco di codice
+  Markdown); premuto di nuovo, lo riporta normale.
+- **Macchie e pieghe** sono solo un disegno: dipendono dalla data di nascita della nota, quindi lo stesso
+  foglietto ha lo stesso aspetto su ogni dispositivo, e non toccano il testo. Con «riduci movimento»
+  attivo nel sistema, BiaWrite rinuncia a tutte le animazioni.
 - **Due dispositivi sulla stessa nota.** Se una nota viene modificata in due posti prima che si
   sincronizzino, non si perde nulla: l'altra versione viene salvata in una copia «(altra versione …)».
 - **Capoversi.** Ogni Invio apre un capoverso: così arriva in WordPress. Quanto si vedono staccati
@@ -166,10 +186,10 @@ allineamento o un sottolineato non arrivano, si riapplicano lì con un clic.
 ## Collaudo
 
 - `tests/test.html`, aperto nel browser, verifica il motore di conversione (42 prove).
-- `tests/e2e/` contiene il collaudo dell'intera app con un GitHub simulato (147 verifiche);
+- `tests/e2e/` contiene il collaudo dell'intera app con un GitHub simulato (214 verifiche);
   le istruzioni sono in `README-progetto.md`.
 
 ## Licenza
 
-MIT © B. Raucci. Il carattere Kalam dei foglietti è distribuito con licenza SIL Open Font
-(`fonts/OFL.txt`).
+MIT © B. Raucci. I caratteri Kalam (foglietti) e IBM Plex Mono (spaziatura fissa) sono distribuiti
+con licenza SIL Open Font (`fonts/OFL-Kalam.txt`, `fonts/OFL-IBM-Plex-Mono.txt`).

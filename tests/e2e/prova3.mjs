@@ -1,5 +1,5 @@
 /* Collaudo 3 — impronta o volto (autenticatore virtuale, con e senza PRF), trascinamento sulla bacheca. */
-import { chromium, servi, GitHubFinto, pausa, finche, verifica, esito, RADICE, AVVIO, attendiOk, collega } from './lib.mjs';
+import { chromium, servi, GitHubFinto, pausa, finche, verifica, esito, RADICE, AVVIO, attendiOk, collega , piatta } from './lib.mjs';
 
 const srv = await servi(RADICE, 8767);
 const URL_ = 'http://localhost:8767/';
@@ -7,7 +7,7 @@ const br = await chromium.launch(AVVIO);
 const G = new GitHubFinto();
 
 async function conAutenticatore(prf) {
-  const ctx = await br.newContext({ viewport: { width: 1000, height: 760 }, serviceWorkers: 'block' });
+  const ctx = await br.newContext({ viewport: { width: 1000, height: 760 }, serviceWorkers: 'block' }); await piatta(ctx);
   await G.monta(ctx);
   const p = await ctx.newPage();
   p.on('pageerror', e => console.log('  ERRORE PAGINA', e.message));
@@ -64,7 +64,7 @@ console.log('K. Autenticatore senza PRF: l\'impronta non protegge la chiave, res
 
 console.log('L. Trascinare file sulla bacheca');
 {
-  const ctx = await br.newContext({ viewport: { width: 1000, height: 760 }, serviceWorkers: 'block' });
+  const ctx = await br.newContext({ viewport: { width: 1000, height: 760 }, serviceWorkers: 'block' }); await piatta(ctx);
   const p = await ctx.newPage();
   p.on('pageerror', e => console.log('  ERRORE PAGINA', e.message));
   await p.goto(URL_);

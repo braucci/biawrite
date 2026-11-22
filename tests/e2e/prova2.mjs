@@ -1,5 +1,5 @@
 /* Collaudo 2 — uso senza GitHub, importazione delle vecchie note, passaggio a GitHub, PIN. */
-import { chromium, servi, GitHubFinto, pausa, finche, verifica, esito, RADICE, AVVIO, dispositivo, stato, attendiOk, collega, creaZip } from './lib.mjs';
+import { chromium, servi, GitHubFinto, pausa, finche, verifica, esito, RADICE, AVVIO, dispositivo, stato, attendiOk, collega, creaZip , piatta } from './lib.mjs';
 
 const srv = await servi(RADICE, 8766);
 const URL_ = 'http://localhost:8766/';
@@ -9,7 +9,7 @@ const CHIAVE = G.chiave('github_pat_segretissima_1234567890');
 const nomi = p => p.evaluate(() => [...BiaWrite.note.values()].filter(n => !n.deleted).map(n => n.name).sort());
 
 console.log('A. Solo su questo dispositivo, anche senza rete');
-const ctx = await br.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+const ctx = await br.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }); await piatta(ctx);
 const p = await ctx.newPage();
 p.on('pageerror', e => console.log('  ERRORE PAGINA', e.message));
 await p.goto(URL_);

@@ -3,9 +3,10 @@
  * Con la rete si preferisce sempre la versione pubblicata (gli aggiornamenti arrivano subito);
  * se la rete non risponde entro 3 secondi si usa la copia in cache.
  * Le chiamate a GitHub non passano di qui.                                                    */
-const CACHE = 'biawrite-1.5.0';
-const FILE = ['./', 'index.html', 'core.js', 'archivio.js', 'importa.js', 'app.js', 'config.js', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png',
-  'fonts/kalam-latin-400-normal.woff2', 'fonts/kalam-latin-700-normal.woff2'];
+const CACHE = 'biawrite-1.6.0';
+const FILE = ['./', 'index.html', 'tema.js', 'core.js', 'archivio.js', 'importa.js', 'app.js', 'config.js', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png',
+  'fonts/kalam-latin-400-normal.woff2', 'fonts/kalam-latin-700-normal.woff2',
+  'fonts/ibm-plex-mono-latin-400-normal.woff2', 'fonts/ibm-plex-mono-latin-400-italic.woff2', 'fonts/ibm-plex-mono-latin-700-normal.woff2'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILE)).then(() => self.skipWaiting()));

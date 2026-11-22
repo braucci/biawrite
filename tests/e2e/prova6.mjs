@@ -1,10 +1,10 @@
 /* Collaudo 6 — spazio fra i capoversi: cambia l'aspetto, non il testo. */
-import { chromium, servi, pausa, verifica, esito, RADICE, AVVIO } from './lib.mjs';
+import { chromium, servi, pausa, verifica, esito, RADICE, AVVIO , piatta } from './lib.mjs';
 
 const srv = await servi(RADICE, 8770);
 const br = await chromium.launch(AVVIO);
 const FOTO = !!process.env.FOTO;
-const ctx = await br.newContext({ viewport: { width: 900, height: 620 }, serviceWorkers: 'block' });
+const ctx = await br.newContext({ viewport: { width: 900, height: 620 }, serviceWorkers: 'block' }); await piatta(ctx);
 const p = await ctx.newPage();
 p.on('pageerror', e => console.log('  ERRORE PAGINA', e.message));
 await p.goto('http://localhost:8770/');

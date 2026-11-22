@@ -1,5 +1,11 @@
 # Registro delle modifiche
 
+## 1.8.1 — 22 novembre 2026
+
+- **Scrivere sul telefono**: con la tastiera aperta la barra in alto si ritira e restano gli strumenti di
+  scrittura; la riga che si scrive resta sempre sopra la capsula ˄ ˅ ✓ che iOS appoggia sulla pagina.
+- I campi di scrittura chiedono al browser di non proporre i dati dei contatti.
+
 ## 1.8.0 — 22 novembre 2026
 
 - **Aspetto rifatto.** Cartelle piccole come le icone del Finder, con il nome sotto e i colori delle

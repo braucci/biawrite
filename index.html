@@ -290,6 +290,16 @@ html[data-sfondo="quadretti"] #bacheca {
 #strumenti svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
 #strumenti .stacco { flex: none; width: 1px; height: 22px; margin: 0 5px; background: var(--filo); }
 #editor.semplice #strumenti { display: none; }
+/* Tastiera aperta sul telefono: la barra in alto si ritira e restano gli strumenti di scrittura,
+   un poco più bassi. Tornano com'erano appena la tastiera si chiude (✓ di iOS, «indietro» di Android). */
+@media (max-width: 760px), (pointer: coarse) {
+  #app[data-tastiera="1"] #barra { display: none; }
+  #app[data-tastiera="1"] #editor { border-top-width: 3px; padding-top: env(safe-area-inset-top); }
+  #app[data-tastiera="1"] #strumenti { padding-block: 2px; }
+  #app[data-tastiera="1"] #strumenti button { height: 36px; }
+  #app[data-tastiera="1"] .riga-titolo { padding-top: 12px; }
+  #app[data-tastiera="1"] #editor.semplice { border-top-width: 3px; }
+}
 
 #foglio { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 0 max(20px, env(safe-area-inset-right)) 40vh max(20px, env(safe-area-inset-left)); }
 #foglio > * { max-width: 41rem; margin-inline: auto; }
@@ -503,8 +513,8 @@ a.tasto { text-decoration: none; color: inherit; }
         <input id="titolo" type="text" placeholder="Titolo" aria-label="Titolo della nota" autocomplete="off" enterkeyhint="next">
         <span id="estensione">.md</span>
       </div>
-      <div id="carta" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Testo della nota" spellcheck="true" lang="it"></div>
-      <textarea id="testo" aria-label="Testo della nota" spellcheck="true" lang="it" placeholder="Scrivi…"></textarea>
+      <div id="carta" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Testo della nota" spellcheck="true" lang="it" autocomplete="off" autocapitalize="sentences"></div>
+      <textarea id="testo" aria-label="Testo della nota" spellcheck="true" lang="it" placeholder="Scrivi…" autocomplete="off" autocapitalize="sentences"></textarea>
     </div>
   </main>
 

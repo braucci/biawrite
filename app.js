@@ -8,7 +8,7 @@
 (() => {
   'use strict';
 
-  const VERSIONE = '1.8.0';
+  const VERSIONE = '1.8.1';
   const CFG = Object.assign({ repository: 'biawrite-note', cartella: 'note' }, window.BIAWRITE_CONFIG || {});
   const COLORI = ['giallo', 'arancio', 'rosa', 'lilla', 'azzurro', 'verde', 'carta', 'grigio'];
   const NOMI_COLORI = { giallo: 'Giallo', arancio: 'Arancio', rosa: 'Rosa', lilla: 'Lilla', azzurro: 'Azzurro', verde: 'Verde', carta: 'Bianco', grigio: 'Grigio' };
@@ -546,6 +546,7 @@
   function cresci() { testo.style.height = 'auto'; testo.style.height = Math.max(testo.scrollHeight, 200) + 'px'; }
 
   carta.addEventListener('input', () => {
+    if (app.dataset.tastiera === '1') cursoreInVista();
     if (!carta.firstChild || (carta.childNodes.length === 1 && carta.firstChild.nodeName === 'BR')) {
       carta.innerHTML = '<p><br></p>';
       const r = document.createRange(); r.setStart(carta.firstChild, 0); r.collapse(true);
@@ -553,7 +554,7 @@
     }
     segnaVuota(); modificato();
   });
-  testo.addEventListener('input', () => { cresci(); modificato(); });
+  testo.addEventListener('input', () => { cresci(); modificato(); if (app.dataset.tastiera === '1') cursoreInVista(); });
   titolo.addEventListener('input', modificato);
   titolo.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); (editor.classList.contains('semplice') ? testo : carta).focus(); } });
 
@@ -1731,7 +1732,68 @@
   });
 
   const vv = window.visualViewport;
-  function misura() { if (!vv) return; app.style.setProperty('--alt', vv.height + 'px'); app.style.top = vv.offsetTop + 'px'; }
+  function misura() { if (!vv) return; app.style.setProperty('--alt', vv.height + 'px'); app.style.top = vv.offsetTop + 'px'; tastiera(); }
+
+  /* La tastiera del telefono. Aperta, lascia poche righe: allora la barra in alto si ritira (resta quella
+   * della formattazione; torna appena la tastiera si chiude) e la riga del cursore resta sempre sopra la
+   * capsula che iOS fa galleggiare sulla pagina (˄ ˅ ✓). Quella capsula appartiene al sistema: una pagina
+   * web non la può togliere, ma può non lasciarci sotto il testo che si sta scrivendo.
+   * «Aperta» = un campo di scrittura ha il fuoco e il riquadro visibile è più basso di quello pieno. */
+  const MARGINE_TASTIERA = 76;                                  // la capsula copre circa 60 pt sopra la tastiera
+  let altPiena = 0, larghezza = 0, giroCursore = 0;
+  const scrive = () => { const a = document.activeElement; return !!a && (a === carta || a === testo || a === titolo || carta.contains(a)); };
+  function tastiera() {
+    if (!vv) return;
+    if (innerWidth !== larghezza) { larghezza = innerWidth; altPiena = 0; }      // girando il telefono cambia l'altezza piena
+    const attivo = scrive();
+    if (!attivo) altPiena = vv.height; else if (vv.height > altPiena) altPiena = vv.height;
+    const su = attivo && vista() === 'editor' && altPiena - vv.height > 140;
+    if ((app.dataset.tastiera === '1') !== su) app.dataset.tastiera = su ? '1' : '';
+    if (su) cursoreInVista();
+  }
+  /* Il rettangolo del cursore: nella pagina formattata dalla selezione, nella textarea da una copia invisibile. */
+  function rettCursore() {
+    const a = document.activeElement;
+    if (a === testo || a === titolo) {
+      if (a === titolo) return a.getBoundingClientRect();
+      const cs = getComputedStyle(testo), m = document.createElement('div');
+      for (const k of ['fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'lineHeight', 'letterSpacing', 'wordSpacing', 'textIndent', 'tabSize', 'hyphens']) m.style[k] = cs[k];
+      Object.assign(m.style, { position: 'absolute', visibility: 'hidden', whiteSpace: 'pre-wrap', overflowWrap: 'break-word', top: '0', left: '-9999px', width: testo.clientWidth + 'px' });
+      m.textContent = testo.value.slice(0, testo.selectionEnd);
+      const sp = document.createElement('span'); sp.textContent = '\u200b'; m.appendChild(sp);
+      document.body.appendChild(m);
+      const y = sp.offsetTop, h = sp.offsetHeight; m.remove();
+      const r = testo.getBoundingClientRect();
+      return { top: r.top + y, bottom: r.top + y + h };
+    }
+    const sel = getSelection();
+    if (!sel.rangeCount || !carta.contains(sel.focusNode)) return null;
+    const r = document.createRange();
+    try { r.setStart(sel.focusNode, sel.focusOffset); r.collapse(true); } catch (e) { return null; }
+    let q = r.getClientRects()[0] || r.getBoundingClientRect();
+    if (!q || !q.height) {                                       // riga vuota: vale il capoverso che la contiene
+      let el = sel.focusNode.nodeType === 1 ? sel.focusNode : sel.focusNode.parentElement;
+      if (el === carta) el = carta.childNodes[sel.focusOffset] || carta.lastChild;
+      if (el && el.nodeType !== 1) el = el.parentElement;
+      q = el && el !== carta ? el.getBoundingClientRect() : null;
+    }
+    return q;
+  }
+  function cursoreInVista() {
+    if (giroCursore) return;
+    giroCursore = requestAnimationFrame(() => {
+      giroCursore = 0;
+      if (app.dataset.tastiera !== '1') return;
+      const r = rettCursore(), f = $('#foglio'), fr = f.getBoundingClientRect();
+      if (!r || !fr.height) return;
+      const basso = fr.bottom - MARGINE_TASTIERA, alto = fr.top + 6;
+      if (r.bottom > basso) f.scrollTop += Math.ceil(r.bottom - basso);
+      else if (r.bottom < alto) f.scrollTop -= Math.ceil(alto - r.top);
+    });
+  }
+  document.addEventListener('selectionchange', () => { if (app.dataset.tastiera === '1') cursoreInVista(); });
+  document.addEventListener('focusin', () => tastiera());
+  document.addEventListener('focusout', () => setTimeout(tastiera, 0));
   if (vv) { vv.addEventListener('resize', misura); vv.addEventListener('scroll', misura); misura(); }
   window.addEventListener('resize', chiudiMenu);
 

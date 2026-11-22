@@ -197,6 +197,19 @@ scheda 2 righe × 2 colonne.
 i gettoni (caratteri tutti su `--fissa`, colori) e poche regole di forma in coda a `stile.css`; nessun
 markup diverso. In stile terminale «tema automatico» significa notte.
 
+## Tastiera del telefono (1.8.1)
+
+`tastiera()` in `app.js`, chiamata a ogni `resize`/`scroll` di `visualViewport` e a ogni cambio di fuoco:
+la tastiera è «aperta» se un campo di scrittura dell'editor ha il fuoco e il riquadro visibile è più basso
+di almeno 140 px dell'altezza piena (misurata quando nessun campo ha il fuoco, e azzerata se cambia la
+larghezza, cioè girando il telefono). Allora `#app[data-tastiera="1"]` e, solo su schermi stretti o
+tattili, `#barra` sparisce. `cursoreInVista()` misura il cursore (dalla selezione nella pagina
+formattata; con una copia invisibile nella textarea, perché lì il testo va a capo) e fa scorrere
+`#foglio` perché resti almeno 76 px sopra il bordo inferiore: su iOS 26 la capsula della tastiera
+galleggia sopra la pagina invece di rimpicciolire il riquadro visibile. Interviene solo quando si scrive
+o si sposta il cursore, mai mentre si scorre per rileggere. La barra accessoria di iOS non si può
+nascondere da una pagina web né da una webapp installata.
+
 ## Bacheca, temi e movimento
 
 **Cartelle dei mesi.** Sono virtuali: nascono a ogni disegno dalla data di nascita della nota
@@ -301,7 +314,7 @@ come testo; le note passano dal motore Markdown e poi dal sanificatore di `core.
 ```sh
 cd tests/e2e
 npm install playwright && npx playwright install chromium
-node prova1.mjs && node prova2.mjs && node prova3.mjs && node prova4.mjs && node prova5.mjs && node prova6.mjs && node prova7.mjs && node prova8.mjs && node prova9.mjs
+node prova1.mjs && node prova2.mjs && node prova3.mjs && node prova4.mjs && node prova5.mjs && node prova6.mjs && node prova7.mjs && node prova8.mjs && node prova9.mjs && node prova10.mjs
 ```
 
 `lib.mjs` contiene un **GitHub simulato** (oggetti git in memoria, ramo con controllo di avanzamento,
@@ -346,6 +359,11 @@ scrittore di archivi zip.
   (misure, nome sotto, pallini, «Fissate», fila); formati (scelta, proporzioni, caratteri, nessuna
   sovrapposizione, fila delle fissate); stile terminale (spaziatura fissa, scuro di serie, riga di
   comando, cartelle a elenco, note dritte, editor, persistenza, variante chiara, ritorno); telefono.
+
+- `prova10.mjs` (14 verifiche): scrivere sul telefono con la tastiera (simulata accorciando lo schermo
+  mentre un campo ha il fuoco) — la barra si ritira e torna, il cursore resta fuori dalla fascia della
+  capsula scrivendo e toccando una riga nascosta, nessun richiamo mentre si rilegge, nessun effetto senza
+  campo attivo né durante la ricerca, textarea delle note `.txt`, computer invariato.
 
 Le prove 1–6 guardano la bacheca «tutte insieme» (`piatta()` in `lib.mjs`); la 7 le cartelle.
 - `prova4.mjs` (17 verifiche): la puntina — ordine in bacheca, ricerca, indice del repository, secondo

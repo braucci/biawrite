@@ -229,6 +229,19 @@ dire notte); con «Sempre giorno» diventa carta e inchiostro. Le note sono riqu
 sul bordo sinistro, le cartelle righe di un elenco, i riquadri della plancia hanno la loro etichetta.
 Vale per tutta l'app: editor, impostazioni, diario.
 
+## Scrivere sul telefono
+
+Quando la tastiera è aperta lo schermo utile si riduce a poche righe. Allora la barra in alto (stato,
+Copia, menu) si ritira e restano solo gli strumenti di scrittura, un poco più bassi; tornano com'erano
+appena la tastiera si chiude (✓ su iPhone, «indietro» su Android). La riga che si sta scrivendo resta
+sempre sopra la fascia in fondo allo schermo dove iOS appoggia la sua capsula ˄ ˅ ✓.
+
+Quella capsula, e la riga dei suggerimenti sotto di essa, appartengono alla tastiera dell'iPhone: una
+pagina web non le può togliere (le frecce passano da un campo all'altro, ✓ chiude la tastiera). Se nella
+riga dei suggerimenti compaiono gli indirizzi dei contatti («casa», «ufficio»), si spengono da
+*Impostazioni → App → Safari → Riempimento automatico → Usa informazioni contatto*; l'intera riga dei
+suggerimenti da *Impostazioni → Generali → Tastiera → Predittiva*, se si rinuncia ai suggerimenti di parola.
+
 ## Incollare in WordPress
 
 Il pulsante **Copia** mette negli appunti l'intera nota come testo formattato: grassetto, corsivo,
@@ -284,7 +297,7 @@ allineamento o un sottolineato non arrivano, si riapplicano lì con un clic.
 
 - `tests/test.html`, aperto nel browser, verifica il motore di conversione (42 prove);
   `tests/test-diario.html` il lettore del diario alimentare (34 prove).
-- `tests/e2e/` contiene il collaudo dell'intera app con un GitHub simulato (331 verifiche);
+- `tests/e2e/` contiene il collaudo dell'intera app con un GitHub simulato (345 verifiche);
   le istruzioni sono in `README-progetto.md`.
 
 ## Licenza

@@ -210,6 +210,27 @@ galleggia sopra la pagina invece di rimpicciolire il riquadro visibile. Intervie
 o si sposta il cursore, mai mentre si scorre per rileggere. La barra accessoria di iOS non si può
 nascondere da una pagina web né da una webapp installata.
 
+## Chi ospita la pagina: l'app per Mac (1.9)
+
+L'app per Mac (`biawrite-mac`) carica questa webapp in un WKWebView, servita dal Mac stesso su
+`http://127.0.0.1:47219` (un contesto sicuro: `crypto.subtle` e IndexedDB funzionano), e inserisce prima
+di ogni script `window.BiaMac`. La webapp lo usa solo se c'è; nel browser nulla cambia.
+
+- `copia(html, testo)` → se esiste `BiaMac.copia`, gli appunti li riempie l'app (HTML e testo semplice);
+  altrimenti la via consueta del browser.
+- Cockpit: «Leggi / Rileggi il file» chiama `BiaMac.diario()` (il pannello di scelta è quello del Mac, e il
+  file lo segue l'app, in sola lettura); l'app consegna il testo con `BiaCruscotto.imposta(testo, {origine:
+  'file', modificato, dimensione})`, che fa le stesse verifiche del file scelto a mano. `imposta` attende
+  `avvia()`, così una consegna arrivata a pagina appena aperta non viene sovrascritta dallo stato salvato.
+- `BiaWrite.comando(nome)` — `impostazioni`, `sincronizza`, `nuova`, `cerca`, `diario`, `bacheca` — per i
+  menu dell'app; restituisce `false` a dispositivo bloccato o per un nome sconosciuto. In `app.js` la
+  funzione si chiama `comandoMenu`, perché `comando` è la barra di formattazione: nella stessa closure una
+  seconda dichiarazione con lo stesso nome sostituirebbe la prima.
+- `BiaWrite.salvaOra()` scrive subito la nota aperta in IndexedDB, senza attendere il salvataggio
+  automatico: l'app lo chiama prima di chiudersi.
+- ⌘B ⌘I ⌘U (o Ctrl) nella pagina formattata li gestisce la pagina, con `preventDefault`: in WKWebView un
+  tasto non gestito dalla pagina passa ai menu dell'app.
+
 ## Bacheca, temi e movimento
 
 **Cartelle dei mesi.** Sono virtuali: nascono a ogni disegno dalla data di nascita della nota
@@ -314,7 +335,7 @@ come testo; le note passano dal motore Markdown e poi dal sanificatore di `core.
 ```sh
 cd tests/e2e
 npm install playwright && npx playwright install chromium
-node prova1.mjs && node prova2.mjs && node prova3.mjs && node prova4.mjs && node prova5.mjs && node prova6.mjs && node prova7.mjs && node prova8.mjs && node prova9.mjs && node prova10.mjs
+for n in 1 2 3 4 5 6 7 8 9 10 11; do node prova$n.mjs || break; done
 ```
 
 `lib.mjs` contiene un **GitHub simulato** (oggetti git in memoria, ramo con controllo di avanzamento,
@@ -334,7 +355,7 @@ scrittore di archivi zip.
   LaTeX esatti, evidenziato, immagini (anche di Bear 1 e non citate), editor, secondo dispositivo,
   reimportazione senza doppioni né nomi cambiati.
 - `prova6.mjs` (7 verifiche): spazio fra i capoversi — il testo non cambia, cambia solo l'aspetto.
-- `prova7.mjs` (67 verifiche): cartelle dei mesi — anni e conteggi, mese di nascita e non di modifica,
+- `prova7.mjs` (68 verifiche): cartelle dei mesi — anni e conteggi, mese di nascita e non di modifica,
   ordine interno, puntine, freccia, indietro e avanti del browser, ricarica, nota nuova nella cartella
   del suo mese, repository invariato, ricerca, elenco unico; notte, giorno e tema del sistema; sfondi
   pastello e quadretti; spaziatura fissa nell'editor e sul foglietto, carattere incluso, tasto M e
@@ -364,6 +385,11 @@ scrittore di archivi zip.
   mentre un campo ha il fuoco) — la barra si ritira e torna, il cursore resta fuori dalla fascia della
   capsula scrivendo e toccando una riga nascosta, nessun richiamo mentre si rilegge, nessun effetto senza
   campo attivo né durante la ricerca, textarea delle note `.txt`, computer invariato.
+
+- `prova11.mjs` (19 verifiche): chi ospita la pagina — pulsanti della barra di formattazione; ⌘B ⌘I ⌘U
+  gestiti dalla pagina (e trattenuti), Ctrl una volta sola, nulla fuori dalla pagina formattata; i comandi
+  per i menu, che lasciano intatta la barra; `salvaOra`; nel browser niente `BiaMac`; copia passata a
+  `BiaMac.copia`. Il ponte con l'app vera si prova in `biawrite-mac` (`prove_ponte.mjs`).
 
 Le prove 1–6 guardano la bacheca «tutte insieme» (`piatta()` in `lib.mjs`); la 7 le cartelle.
 - `prova4.mjs` (17 verifiche): la puntina — ordine in bacheca, ricerca, indice del repository, secondo

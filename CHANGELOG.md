@@ -1,5 +1,15 @@
 # Registro delle modifiche
 
+## 1.9.0 — 22 novembre 2026
+
+- Agganci per l'**app per Mac** (`biawrite-mac`), senza effetti nel browser: la copia per WordPress passa
+  dagli appunti del sistema; il diario alimentare viene seguito dal Mac (sempre in sola lettura); i menu
+  nativi chiedono alla pagina nuova nota, ricerca, diario, impostazioni, sincronizzazione; prima di
+  chiudersi l'app fa salvare la nota aperta (`BiaWrite.comando`, `BiaWrite.salvaOra`, `BiaWrite.avviso`).
+- **⌘B ⌘I ⌘U** (Ctrl su Windows e Linux) nella pagina formattata: grassetto, corsivo, sottolineato, gestiti
+  dalla pagina stessa, quindi uguali in ogni browser e nell'app per Mac.
+- Collaudo 11: barra di formattazione, scorciatoie, comandi per chi ospita la pagina.
+
 ## 1.8.1 — 22 novembre 2026
 
 - **Scrivere sul telefono**: con la tastiera aperta la barra in alto si ritira e restano gli strumenti di

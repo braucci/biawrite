@@ -1,6 +1,6 @@
 {
   "name": "biawrite",
-  "version": "1.8.1",
+  "version": "1.9.0",
   "description": "Appunti e articoli in Markdown, conservati in un repository privato di GitHub.",
   "author": "B. Raucci",
   "license": "MIT",

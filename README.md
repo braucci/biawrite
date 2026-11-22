@@ -169,7 +169,8 @@ scrivere: si può soltanto rileggere il file e scegliere periodo, mese e giorno.
 file (su iPhone e iPad: *Scegli file → iCloud Drive*). In Chrome e in Edge, sul computer, il file
 scelto viene ricordato: da allora il diario si rilegge da solo ogni volta che si apre la cartella o si
 torna sulla scheda, e il pulsante diventa «Rileggi il file». Safari e Firefox non lo consentono: lì si
-sceglie il file ogni volta. Basta farlo su un dispositivo: con GitHub collegato il diario sale nel
+sceglie il file ogni volta. Nell'app per Mac (progetto `biawrite-mac`) il file viene seguito dal sistema e il
+diario si aggiorna da solo a ogni modifica. Basta farlo su un dispositivo: con GitHub collegato il diario sale nel
 repository privato (`diario/diario-alimentare.md`, fuori dalla cartella delle note) e gli altri
 dispositivi lo ricevono alla prima sincronizzazione. Vale anche il contrario: un file messo in quella
 posizione dal sito di GitHub o da un altro programma arriva nell'app. Quella nel repository è una
@@ -242,6 +243,14 @@ riga dei suggerimenti compaiono gli indirizzi dei contatti («casa», «ufficio�
 *Impostazioni → App → Safari → Riempimento automatico → Usa informazioni contatto*; l'intera riga dei
 suggerimenti da *Impostazioni → Generali → Tastiera → Predittiva*, se si rinuncia ai suggerimenti di parola.
 
+## Sul Mac
+
+BiaWrite esiste anche come app per Mac: progetto [`biawrite-mac`](https://github.com/braucci/biawrite-mac).
+È questa stessa webapp in una finestra propria, con i menu del Mac, gli appunti del sistema per
+WordPress e il diario alimentare seguito da sé; le note restano nel repository privato di GitHub e la
+webapp si aggiorna da questo sito. Nella pagina formattata ⌘B, ⌘I e ⌘U (Ctrl su Windows e Linux)
+mettono grassetto, corsivo e sottolineato.
+
 ## Incollare in WordPress
 
 Il pulsante **Copia** mette negli appunti l'intera nota come testo formattato: grassetto, corsivo,
@@ -297,7 +306,7 @@ allineamento o un sottolineato non arrivano, si riapplicano lì con un clic.
 
 - `tests/test.html`, aperto nel browser, verifica il motore di conversione (42 prove);
   `tests/test-diario.html` il lettore del diario alimentare (34 prove).
-- `tests/e2e/` contiene il collaudo dell'intera app con un GitHub simulato (345 verifiche);
+- `tests/e2e/` contiene il collaudo dell'intera app con un GitHub simulato (364 verifiche);
   le istruzioni sono in `README-progetto.md`.
 
 ## Licenza

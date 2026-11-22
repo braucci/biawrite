@@ -94,6 +94,7 @@
 
   /** Nuovo testo del diario: da un file scelto qui (da inviare) o ricevuto dal repository. */
   async function imposta(testo, da) {
+    await avvia();                  // chi consegna il diario dall'esterno (l'app per Mac) può arrivare prima dello stato salvato
     testo = String(testo || '').replace(/^﻿/, '');
     const prova = D.leggi(testo, oggi());
     if (!prova.giorni.length) throw new Error('In questo file non trovo i giorni del diario: servono titoli che cominciano con una data, per esempio «### 22 novembre 2026», e le tabelle dei pasti con la colonna «kcal».');
@@ -141,6 +142,8 @@
     });
   }
   async function aggiorna() {
+    // nell'app per Mac il file lo segue il sistema: lo si sceglie (o lo si rilegge) da lì, sempre in sola lettura
+    if (root.BiaMac && root.BiaMac.diario) { root.BiaMac.diario(); return; }
     try {
       const r = await rileggi(true);
       if (r === true) { opz.avviso('Diario riletto dal file.'); return; }
@@ -502,7 +505,7 @@
     const alto = el.scrollTop;
     const avv = modello.avvisi.length ? '<details class="dz-avvisi"><summary>' + modello.avvisi.length + (modello.avvisi.length === 1 ? ' incongruenza' : ' incongruenze') + ' nel file</summary><ul>' + modello.avvisi.map(a => '<li>' + esc(a) + '</li>').join('') + '</ul></details>' : '';
     el.innerHTML = '<div class="dz">' +
-      '<header class="dz-testa"><p class="dz-fonte">' + esc(maiuscola(fonte())) + '</p>' + avv + '<span class="dz-sola" title="BiaWrite legge il diario e non può modificarlo">sola lettura</span><button class="tasto bordo" data-a="aggiorna">' + (handle ? 'Rileggi il file' : 'Leggi il file') + '</button></header>' +
+      '<header class="dz-testa"><p class="dz-fonte">' + esc(maiuscola(fonte())) + '</p>' + avv + '<span class="dz-sola" title="BiaWrite legge il diario e non può modificarlo">sola lettura</span><button class="tasto bordo" data-a="aggiorna">' + (handle || (root.BiaMac && root.BiaMac.haDiario) ? 'Rileggi il file' : 'Leggi il file') + '</button></header>' +
       '<div class="dz-griglia">' +
       '<section class="dz-foglio dz-andamento" aria-labelledby="dz-t1"><div class="dz-foglio-testa"><h2 id="dz-t1">Calorie</h2>' +
         '<div class="dz-filtri" role="group" aria-label="Periodo">' + [[30, '30 giorni'], [90, '90 giorni'], [0, 'Tutto']].map(x => '<button data-a="periodo" data-v="' + x[0] + '" aria-pressed="' + (intervallo === x[0]) + '">' + x[1] + '</button>').join('') + '</div></div>' +

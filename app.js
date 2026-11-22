@@ -8,7 +8,7 @@
 (() => {
   'use strict';
 
-  const VERSIONE = '1.8.1';
+  const VERSIONE = '1.9.0';
   const CFG = Object.assign({ repository: 'biawrite-note', cartella: 'note' }, window.BIAWRITE_CONFIG || {});
   const COLORI = ['giallo', 'arancio', 'rosa', 'lilla', 'azzurro', 'verde', 'carta', 'grigio'];
   const NOMI_COLORI = { giallo: 'Giallo', arancio: 'Arancio', rosa: 'Rosa', lilla: 'Lilla', azzurro: 'Azzurro', verde: 'Verde', carta: 'Bianco', grigio: 'Grigio' };
@@ -661,6 +661,8 @@
 
   /* --- copia negli appunti */
   async function copia(html, semplice) {
+    // nell'app per Mac gli appunti li scrive il sistema: HTML per l'editor visuale, testo semplice per il resto
+    if (window.BiaMac && BiaMac.copia) { try { return BiaMac.copia(html, semplice) !== false; } catch (e) { /* si tenta la via del browser */ } }
     try {
       if (html && window.ClipboardItem && navigator.clipboard && navigator.clipboard.write) {
         await navigator.clipboard.write([new ClipboardItem({
@@ -1718,7 +1720,13 @@
     if (collegato()) sync();
   }
 
+  const SCORCIATOIE = { b: 'bold', i: 'italic', u: 'underline' };
   document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && SCORCIATOIE[e.key.toLowerCase()] && carta.contains(document.activeElement)) {
+      e.preventDefault();
+      comando(SCORCIATOIE[e.key.toLowerCase()]);
+      return;
+    }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
       e.preventDefault();
       if (aperta) { conferma(); if (collegato()) sync(); avviso(collegato() ? 'Si salva da sé: sta già andando su GitHub.' : 'Si salva da sé: è già al sicuro su questo dispositivo.', 2200); }
@@ -1841,6 +1849,22 @@
   }
   avvia();
 
-  /* per il collaudo automatico */
-  window.BiaWrite = { versione: VERSIONE, note, sync, stato: () => elStato.dataset.s };
+  /* Comandi per chi ospita la pagina (l'app per Mac li lega ai suoi menu). A dispositivo bloccato non fanno nulla.
+   * (Nome distinto da comando(), che è la barra di formattazione: nella stessa funzione, una seconda
+   * dichiarazione con lo stesso nome prenderebbe il posto della prima.) */
+  const libero = () => $('#blocco').hidden && vista() !== 'avvio';
+  function comandoMenu(nome) {
+    if (!libero()) return false;
+    if (nome === 'impostazioni') { if (!document.querySelector('dialog[open]')) pannello(); return true; }
+    if (nome === 'sincronizza') { if (aperta) conferma(); if (collegato()) { sync(); avviso('Sincronizzo con GitHub…', 1600); } else avviso('Questo dispositivo non è collegato a GitHub.'); return true; }
+    if (nome === 'nuova') { if (vista() === 'diario') history.back(); if (aperta) chiudi(); setTimeout(nuovaNota, aperta || vista() !== 'bacheca' ? 260 : 0); return true; }
+    if (nome === 'cerca') { if (vista() !== 'bacheca') { if (aperta || vista() === 'diario') history.back(); setTimeout(() => elCerca.focus(), 300); } else elCerca.focus(); return true; }
+    if (nome === 'diario') { if (!conDiario()) return false; if (aperta) { chiudi(); setTimeout(apriDiario, 300); } else if (vista() !== 'diario') apriDiario(); return true; }
+    if (nome === 'bacheca') { if (aperta || vista() === 'diario') history.back(); return true; }
+    return false;
+  }
+  /* Salva subito la nota aperta sul dispositivo (per chi chiude la pagina dall'esterno, come l'app per Mac). */
+  async function salvaOra() { const f = conferma(); if (f) await f; return true; }
+  /* per il collaudo automatico e per chi ospita la pagina */
+  window.BiaWrite = { versione: VERSIONE, note, sync, stato: () => elStato.dataset.s, avviso, comando: comandoMenu, salvaOra };
 })();

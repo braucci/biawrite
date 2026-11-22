@@ -1,0 +1,283 @@
+/* BiaWrite — stile.css
+   L'aspetto della bacheca, in due stili fra cui scegliere nelle impostazioni.
+
+   SCRIVANIA — una scrivania del Mac: lo sfondo pastello fa da parete, in alto una plancia di
+   riquadri smerigliati (data, meteo, diario), le cartelle sono icone piccole con il nome sotto,
+   le note sono carta vera in quattro formati (foglietto, striscia, scheda, tabulato).
+
+   TERMINALE — tutto a spaziatura fissa: riquadri a filo, cartelle elencate come da `ls -l`,
+   un colore solo per agire (verde fosforo di notte, verde inchiostro di giorno).
+
+   © B. Raucci — licenza MIT */
+
+/* ================================================================== plancia */
+#plancia {
+  max-width: 1180px; margin: 0 auto 10px; padding: 0 4px; display: grid; gap: 12px; align-items: stretch;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+#plancia > * {
+  position: relative; min-width: 0; border-radius: 16px; padding: 12px 16px; text-align: left;
+  background: color-mix(in srgb, var(--foglio) 72%, transparent);
+  -webkit-backdrop-filter: blur(16px) saturate(1.25); backdrop-filter: blur(16px) saturate(1.25);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .5), 0 12px 26px -18px rgba(var(--ombra), .6);
+}
+.notte #plancia > * { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .07), 0 12px 26px -18px rgba(0, 0, 0, .8); }
+#plancia .pl-meteo { grid-column: 1 / -1; order: 3; padding: 0; }
+@media (min-width: 860px) {
+  #plancia { grid-template-columns: auto minmax(0, 1fr) auto; padding: 0 8px; gap: 14px; }
+  #plancia .pl-meteo { grid-column: auto; order: 0; }
+}
+
+.pl-data { display: grid; grid-template: "n g" auto "n m" auto "n c" auto / auto 1fr; column-gap: 12px; align-content: center; line-height: 1.2; }
+.pl-data b { grid-area: n; align-self: center; font: 300 2.9rem/1 var(--comandi); letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+.pl-data .g { grid-area: g; font-weight: 700; font-size: .84rem; color: var(--rosso); }
+.pl-data .m { grid-area: m; font-size: .9rem; }
+.pl-data small { grid-area: c; font-size: .76rem; color: var(--tenue); white-space: nowrap; }
+
+.pl-diario { display: flex; align-items: center; gap: 11px; cursor: pointer; transition: translate .3s var(--molla), background .15s; }
+.pl-diario:hover, .pl-diario:focus-visible { translate: 0 -2px; background: color-mix(in srgb, var(--foglio) 90%, transparent); }
+.pl-diario:active { translate: 0 0; }
+.pl-ic { flex: none; width: 34px; height: 34px; padding: 7px; border-radius: 10px; background: var(--blu); color: var(--blu-su); fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
+.pl-testo { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+.pl-testo b { font-weight: 650; font-size: .92rem; white-space: nowrap; }
+.pl-testo small { font-size: .76rem; color: var(--tenue); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+.pl-graf { flex: none; width: 62px; height: 30px; margin-left: auto; }
+.pl-graf rect { fill: var(--blu); } .pl-graf rect.c { opacity: .4; } .pl-graf line { stroke: var(--tenue); stroke-width: 1; vector-effect: non-scaling-stroke; }
+@media (max-width: 859px) {
+  .pl-graf { display: none; }
+  #plancia { gap: 10px; }
+  #plancia > .pl-data, #plancia > .pl-diario { padding: 10px 12px; }
+  .pl-data { column-gap: 9px; } .pl-data b { font-size: 2.3rem; } .pl-data .m { font-size: .82rem; } .pl-data small { white-space: normal; font-size: .72rem; }
+  .pl-diario { gap: 9px; } .pl-testo b { white-space: normal; line-height: 1.15; font-size: .88rem; }
+}
+
+/* ---- meteo */
+.mt, .mt-vuoto, .mt-attesa { display: flex; align-items: center; gap: 6px 22px; padding: 12px 16px; width: 100%; height: 100%; min-width: 0; text-align: left; }
+.mt { flex-wrap: wrap; position: relative; font-variant-numeric: tabular-nums; }
+@media (min-width: 860px) { .mt { flex-wrap: nowrap; } }
+@media (min-width: 860px) and (max-width: 1080px) { .mt-ore li:nth-child(n+3):not(.domani) { display: none; } }
+.mt-i { flex: none; width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.mt-i.grande { width: 44px; height: 44px; stroke-width: 1.35; }
+.mt-ora { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.mt-t { font: 300 2.6rem/1 var(--comandi); letter-spacing: -.04em; }
+.mt-d { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+.mt-desc { font-weight: 650; font-size: .92rem; white-space: nowrap; }
+.mt-luogo { display: flex; align-items: center; gap: 3px; font-size: .78rem; color: var(--tenue); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mt-luogo .mt-i { width: 13px; height: 13px; }
+.mt-fatti { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; font-size: .8rem; }
+.mt-fatti li { display: flex; align-items: center; gap: 5px; white-space: nowrap; color: var(--tenue); }
+.mt-fatti li span { color: var(--inchiostro); font-weight: 600; }
+.mt-fatti .mt-i { width: 16px; height: 16px; }
+.mt-ore { list-style: none; margin: 0 0 0 auto; padding: 0 0 0 20px; display: flex; gap: 4px; border-left: 1px solid color-mix(in srgb, var(--tenue) 30%, transparent); }
+.mt-ore li { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 42px; font-size: .78rem; }
+.mt-ore time { color: var(--tenue); font-size: .72rem; }
+.mt-ore b { font-weight: 650; }
+.mt-ore small { height: 1em; line-height: 1; font-size: .68rem; color: var(--tenue); }
+.mt-ore .domani { margin-left: 6px; padding-left: 10px; border-left: 1px solid color-mix(in srgb, var(--tenue) 30%, transparent); }
+.mt-fonte { font-size: .66rem; color: var(--tenue); opacity: .8; text-decoration: none; white-space: nowrap; }
+.mt-fonte:hover { opacity: 1; text-decoration: underline; }
+.mt-vuoto, .mt-attesa { gap: 11px; border-radius: inherit; }
+.mt-vuoto { cursor: pointer; }
+.mt-vuoto:hover { background: color-mix(in srgb, var(--foglio) 90%, transparent); }
+.mt-vuoto .mt-i, .mt-attesa .mt-i { width: 32px; height: 32px; stroke-width: 1.4; color: var(--tenue); }
+.mt-vuoto span, .mt-attesa span { display: flex; flex-direction: column; line-height: 1.25; }
+.mt-vuoto b, .mt-attesa b { font-weight: 650; font-size: .92rem; }
+.mt-vuoto small, .mt-attesa small { font-size: .78rem; color: var(--tenue); }
+.mt-riprova { margin-left: auto; height: 30px; padding: 0 11px; border-radius: 15px; font-size: .82rem; font-weight: 600; box-shadow: inset 0 0 0 1px var(--filo); }
+@media (max-width: 859px) {
+  .mt { gap: 8px 18px; }
+  .mt-ore { margin: 2px 0 8px; padding: 8px 0 0; border-left: 0; border-top: 1px solid color-mix(in srgb, var(--tenue) 26%, transparent); flex-basis: 100%; justify-content: space-between; }
+}
+.esiti { display: grid; gap: 4px; margin: -2px 0 8px; font-size: .86rem; color: var(--tenue); }
+.esito { text-align: left; padding: 7px 10px; border-radius: 8px; color: var(--inchiostro); box-shadow: inset 0 0 0 1px var(--filo); }
+.esito:hover { background: rgba(var(--ombra), .07); }
+
+/* ================================================================== cartelle: icone piccole, come nel Finder */
+.anno { margin: 22px 10px 0; font-size: 1.4rem; }
+.griglia.cartelle { grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); grid-auto-rows: auto; grid-auto-flow: row; gap: 4px 2px; padding: 6px 4px; }
+@media (min-width: 640px) { .griglia.cartelle { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px 4px; padding: 8px; } }
+.griglia.in-testa { padding-bottom: 0; }
+.cartella {
+  display: flex; flex-direction: column; align-items: center; gap: 1px; min-width: 0; padding: 8px 2px 7px; border-radius: 10px;
+  text-align: center; color: var(--inchiostro); transition: background .15s;
+}
+.cartella .ic {
+  position: relative; flex: none; width: 68px; height: 54px; margin-bottom: 5px;
+  filter: drop-shadow(0 2px 2px rgba(var(--ombra), .24));
+  transition: translate .35s var(--molla), scale .26s ease-out, opacity .26s ease-out;
+}
+.cartella .ic::before {                     /* il dorso, con la linguetta */
+  content: ""; position: absolute; inset: 0; background: linear-gradient(#49A3EC, #2F8CDE);
+  clip-path: path("M0 8 Q0 2 6 2 H23 Q27 2 29.5 5 L32 8.5 H62 Q68 8.5 68 14.5 V48 Q68 54 62 54 H6 Q0 54 0 48 Z");
+}
+.cartella .ic::after {                      /* il davanti, più chiaro, con il filo di luce in alto */
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 40px; border-radius: 5px 5px 6px 6px;
+  background: linear-gradient(#96D5FD, #5BB2F4);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .62), 0 -1px 1.5px rgba(10, 70, 130, .24);
+}
+.cartella.speciale .ic::before { background: linear-gradient(#F0B03C, #DE9518); }
+.cartella.speciale .ic::after { background: linear-gradient(#FCDD92, #F4BE4E); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .62), 0 -1px 1.5px rgba(130, 80, 0, .24); }
+.cartella .spilla { position: absolute; z-index: 1; left: 50%; top: 13px; width: 24px; height: 28px; translate: -50% 0; overflow: visible; }
+.cartella b { max-width: 100%; padding: 1px 7px; border-radius: 5px; font: 500 .82rem/1.25 var(--comandi); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cartella small { font: .7rem/1.2 var(--comandi); color: var(--tenue); }
+.cartella .fogli { display: flex; gap: 3px; height: 7px; margin-top: 3px; }
+.cartella .fogli i { width: 7px; height: 7px; border-radius: 50%; background: var(--c); box-shadow: inset 0 0 0 .5px rgba(0, 0, 0, .28); }
+.cartella:hover { background: rgba(var(--ombra), .06); }
+.notte .cartella:hover { background: rgba(255, 255, 255, .07); }
+.cartella:hover .ic { translate: 0 -2px; }
+.cartella:focus-visible { outline: none; background: rgba(var(--ombra), .08); }
+.cartella:focus-visible b, .cartella:active b, .cartella.apre b { background: var(--blu); color: var(--blu-su); }
+.cartella.apre .ic { scale: 1.45; opacity: 0; }
+.notte .cartella .ic { filter: brightness(.86) saturate(.9) drop-shadow(0 2px 2px rgba(0, 0, 0, .5)); }
+@keyframes compare { from { opacity: 0; scale: .9; } }
+.anima .cartella { animation: compare .34s var(--morbido) backwards; animation-delay: calc(min(var(--i, 0), 30) * 14ms); }
+
+/* ================================================================== note: carta in quattro formati
+   La griglia ha righe basse e uguali; ogni formato ne occupa quante gliene servono, e i formati
+   diversi si incastrano fra loro. */
+.griglia { grid-auto-rows: 78px; grid-auto-flow: dense; gap: 20px 16px; }
+@media (min-width: 640px) { .griglia { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); grid-auto-rows: 92px; gap: 30px 28px; } }
+.griglia.fissate { padding-bottom: 14px; }
+.nota { aspect-ratio: auto; grid-row: span 2; rotate: calc(var(--r) * .6); }
+.nota.f-striscia { grid-row: span 1; --e: 13px; }
+.nota.f-scheda { grid-column: span 2; --e: 0px; rotate: calc(var(--r) * .22); transform-origin: 50% 50%; }
+.nota.f-tabulato { grid-row: span 3; --e: 0px; rotate: calc(var(--r) * .2); transform-origin: 50% 0; }
+.nota.f-tabulato.corto { grid-row: span 2; }
+.nota:is(.f-tabulato, .f-scheda).m-piega .faccia::after { display: none; }
+
+/* foglietto: la banda della colla in alto tiene piatta la carta, che in basso si solleva */
+.nota .faccia {
+  padding: 16px 14px 6px; font-size: .98rem; line-height: 1.3;
+  background:
+    var(--grana),
+    linear-gradient(180deg, rgba(0, 0, 0, .055), rgba(0, 0, 0, 0) 24px),
+    linear-gradient(166deg, rgba(255, 255, 255, .34) 0%, rgba(255, 255, 255, 0) 30%, rgba(0, 0, 0, 0) 62%, rgba(0, 0, 0, .07) 100%),
+    var(--c);
+}
+.nota h3 { font-size: 1.08rem; }
+.nota footer { font-size: .7rem; }
+
+/* striscia: una riga sola, scritta più grande */
+.f-striscia .faccia { padding: 10px 13px 3px; }
+.f-striscia .anteprima { font-size: 1.06rem; line-height: 1.2; -webkit-mask-image: none; mask-image: none; }
+.f-striscia h3 { margin-bottom: 0; font-size: 1.02rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.f-striscia h3 + .anteprima { font-size: .9rem; white-space: nowrap; }
+.f-striscia footer { height: 17px; }
+.f-striscia::before { height: 30%; }
+
+/* scheda: cartoncino da schedario, a righe, con la riga rossa sotto l'intestazione; il colore è la costola */
+.f-scheda .faccia {
+  clip-path: none; border-radius: 3px; padding: 11px 18px 5px 26px; color: #1D2733; font: 400 .88rem/22px var(--scrittura);
+  background:
+    var(--grana),
+    linear-gradient(90deg, var(--c) 0 9px, rgba(0, 0, 0, .1) 9px 10px, transparent 10px),
+    linear-gradient(transparent 33px, rgba(200, 62, 52, .5) 33px 34.2px, transparent 34.2px),
+    repeating-linear-gradient(transparent 0 21px, rgba(64, 116, 190, .2) 21px 22px) 0 12px,
+    #FBFAF3;
+}
+.f-scheda h3 { margin: 0 0 4px; font: 700 1rem/22px var(--scrittura); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.f-scheda .anteprima { column-width: 190px; column-gap: 26px; }
+.f-scheda .anteprima :is(p, ul, ol, blockquote, pre, h1, h2, h3, h4, h5, h6) { margin: 0; }
+.f-scheda .anteprima:first-child { padding-top: 22px; }
+.f-scheda .orecchia, .f-scheda::before, .f-tabulato .orecchia, .f-tabulato::before { display: none; }
+.f-scheda.fissata .faccia { padding-top: 11px; }
+
+/* tabulato: il modulo continuo delle stampanti ad aghi, per il testo semplice */
+.f-tabulato .faccia {
+  clip-path: none; border-radius: 2px; padding: 13px 24px 5px; color: #1F2A24; font: 400 .7rem/1.5 var(--fissa);
+  background:
+    radial-gradient(circle at 9px 10px, rgba(0, 0, 0, .3) 0 2.4px, transparent 3px) 0 0 / 100% 20px,
+    radial-gradient(circle at calc(100% - 9px) 10px, rgba(0, 0, 0, .3) 0 2.4px, transparent 3px) 0 0 / 100% 20px,
+    linear-gradient(90deg, transparent 17.5px, rgba(0, 0, 0, .1) 17.5px 18.5px, transparent 18.5px calc(100% - 18.5px), rgba(0, 0, 0, .1) calc(100% - 18.5px) calc(100% - 17.5px), transparent calc(100% - 17.5px)),
+    linear-gradient(var(--c) 0 5px, transparent 5px),
+    repeating-linear-gradient(#FDFDFB 0 30px, #E7F3E5 30px 60px);
+}
+.f-tabulato h3 { font: 700 .8rem/1.4 var(--fissa); margin: 0 0 4px; }
+.f-tabulato .anteprima, .f-tabulato .anteprima.fissa { font: inherit; white-space: pre-wrap; }
+.f-tabulato.fissata .faccia { padding-top: 20px; }
+.f-tabulato footer, .f-scheda footer { margin-right: 26px; }
+
+/* ================================================================== stile «terminale» */
+html[data-stile="terminale"] {
+  --comandi: var(--fissa); --scrittura: var(--fissa); --mano: var(--fissa);
+  --tavolo: #F4F1E7; --foglio: #FBF9F2; --inchiostro: #24302A; --tenue: #62716A; --filo: #CECABA;
+  --blu: #1B7F3B; --blu-su: #FFFFFF; --rosso: #B3261E; --ambra: #8F5F00; --ombra: 30, 40, 34;
+  --fondo: none; --grana: none;
+  color-scheme: light;
+}
+html[data-stile="terminale"].notte {
+  --tavolo: #0B0F0E; --foglio: #101615; --inchiostro: #CBDDD2; --tenue: #7E9388; --filo: #24332C;
+  --blu: #7CE38B; --blu-su: #06120A; --rosso: #FF8479; --ambra: #E3B341; --ombra: 0, 0, 0;
+  --fondo: repeating-linear-gradient(rgba(255, 255, 255, .02) 0 1px, transparent 1px 3px);
+  color-scheme: dark;
+}
+[data-stile="terminale"] body { font-size: 14px; }
+[data-stile="terminale"] :is(.tasto, .icona, #stato, #cerca, .campo, .esito, .mt-riprova, .dz-filtri, .gc, .dz-sola, #nuova, dialog, .finestra, .menu, .avviso) { border-radius: 3px; }
+[data-stile="terminale"] #barra { border-bottom: 1px solid var(--filo); }
+[data-stile="terminale"] #marchio { font: 700 1rem/1 var(--fissa); color: var(--blu); text-transform: lowercase; letter-spacing: 0; padding-right: .5em; border-right: .6em solid var(--blu); animation: cursore 1.1s steps(1) infinite; }
+[data-stile="terminale"] #marchio::after { content: ":~$"; color: var(--tenue); font-weight: 400; }
+@keyframes cursore { 50% { border-right-color: transparent; } }
+[data-stile="terminale"] #luogo { font: 700 1rem/1 var(--fissa); text-transform: lowercase; color: var(--blu); }
+[data-stile="terminale"] #luogo::before { content: "~/note/"; color: var(--tenue); font-weight: 400; }
+[data-stile="terminale"] #cerca { background: transparent; }
+[data-stile="terminale"] #cerca:focus-visible { outline: 1px solid var(--blu); outline-offset: 0; }
+[data-stile="terminale"] #bacheca { padding-top: 20px; }
+
+[data-stile="terminale"] #plancia > * { border-radius: 3px; background: var(--foglio); -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: inset 0 0 0 1px var(--filo); }
+[data-stile="terminale"] #plancia > *::before { content: "[ " attr(data-t) " ]"; position: absolute; z-index: 1; top: -.75em; left: 9px; padding: 0 4px; background: var(--tavolo); color: var(--blu); font-size: .7rem; line-height: 1.4; }
+[data-stile="terminale"] .pl-data .g { color: var(--ambra); }
+[data-stile="terminale"] :is(.pl-data b, .mt-t) { font-weight: 400; letter-spacing: -.06em; }
+[data-stile="terminale"] .pl-ic { border-radius: 3px; background: none; color: var(--blu); box-shadow: inset 0 0 0 1px var(--blu); }
+[data-stile="terminale"] :is(.pl-diario:hover, .pl-diario:focus-visible, .mt-vuoto:hover) { translate: 0 0; background: color-mix(in srgb, var(--blu) 10%, var(--foglio)); }
+[data-stile="terminale"] .mt-i.grande { color: var(--blu); }
+[data-stile="terminale"] .mt-desc::before { content: "> "; color: var(--tenue); }
+
+[data-stile="terminale"] .anno { margin-top: 26px; font: 700 1rem/1.2 var(--fissa); letter-spacing: 0; }
+[data-stile="terminale"] .anno::before { content: "##"; color: var(--tenue); font-weight: 400; margin-right: -4px; }
+[data-stile="terminale"] .griglia.cartelle { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 0 30px; padding: 6px 8px; }
+[data-stile="terminale"] .cartella { flex-direction: row; align-items: baseline; gap: 10px; padding: 5px 7px; border-radius: 3px; text-align: left; }
+[data-stile="terminale"] .cartella .ic { display: none; }
+[data-stile="terminale"] .cartella::before { content: "drwxr-xr-x"; flex: none; color: var(--tenue); font-size: .76rem; }
+[data-stile="terminale"] .cartella.speciale::before { content: "drwx--pin-"; }
+[data-stile="terminale"] .cartella b { order: 1; flex: none; overflow: visible; padding: 0; background: none; color: var(--blu); font: 700 .86rem/1.4 var(--fissa); text-transform: lowercase; }
+[data-stile="terminale"] .cartella b::after { content: "/"; color: var(--tenue); font-weight: 400; }
+[data-stile="terminale"] .cartella.speciale b { color: var(--ambra); }
+[data-stile="terminale"] .cartella .fogli { order: 2; margin: 0; align-self: center; }
+[data-stile="terminale"] .cartella .fogli i { border-radius: 1px; }
+[data-stile="terminale"] .cartella small { order: 3; flex: none; margin-left: auto; white-space: nowrap; font: .76rem/1.4 var(--fissa); }
+[data-stile="terminale"] :is(.cartella:hover, .cartella:focus-visible, .cartella.apre) { background: color-mix(in srgb, var(--blu) 13%, transparent); }
+[data-stile="terminale"] .cartella:focus-visible { outline: 1px solid var(--blu); }
+
+[data-stile="terminale"] .griglia { gap: 14px 14px; }
+@media (min-width: 640px) { [data-stile="terminale"] .griglia { gap: 18px 18px; } }
+[data-stile="terminale"] :is(.nota, .nota:hover, .nota:focus-visible, .nota:active) { rotate: 0deg; translate: 0 0; scale: 1; filter: none; }
+[data-stile="terminale"] .nota::before, [data-stile="terminale"] .nota::after, [data-stile="terminale"] .nota .faccia::before, [data-stile="terminale"] .nota.m-piega .faccia::after,
+[data-stile="terminale"] .nota .orecchia, [data-stile="terminale"] .nota .puntina { display: none; }
+[data-stile="terminale"] .nota .faccia {
+  clip-path: none; border-radius: 3px; padding: 9px 11px 4px 15px; background: var(--foglio); color: var(--inchiostro);
+  font: 400 .76rem/1.5 var(--fissa); box-shadow: inset 0 0 0 1px var(--filo), inset 4px 0 0 var(--c);
+}
+[data-stile="terminale"] :is(.nota:hover, .nota:focus-visible) .faccia { box-shadow: inset 0 0 0 1px var(--blu), inset 4px 0 0 var(--c); }
+[data-stile="terminale"] .nota:focus-visible { outline: none; }
+[data-stile="terminale"] .nota h3 { margin: 0 20px 2px 0; font: 700 .8rem/1.5 var(--fissa); color: var(--blu); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+[data-stile="terminale"] .nota h3::before { content: "# "; color: var(--tenue); font-weight: 400; }
+[data-stile="terminale"] .nota :is(.anteprima, .anteprima.fissa) { font: inherit; column-width: auto; }
+[data-stile="terminale"] .nota .anteprima:first-child { padding-top: 0; }
+[data-stile="terminale"] .nota footer { margin-right: 0; font: .68rem var(--fissa); color: var(--tenue); }
+[data-stile="terminale"] .nota.fissata footer::before { content: "[fissata]"; color: var(--ambra); }
+[data-stile="terminale"] .nota .altro { color: var(--tenue); border-radius: 3px; }
+[data-stile="terminale"] .nota.via { animation: none; opacity: 0; }
+[data-stile="terminale"] #nuova { box-shadow: inset 0 0 0 1px var(--blu); }
+
+[data-stile="terminale"] .dz-foglio { border-radius: 3px; background: var(--foglio); box-shadow: inset 0 0 0 1px var(--filo); }
+[data-stile="terminale"] :is(.dz-foglio h2, .dz-pasto h4) { font: 700 1rem/1.3 var(--fissa); letter-spacing: 0; }
+[data-stile="terminale"] .dz-foglio h2::before { content: "## "; color: var(--tenue); font-weight: 400; }
+[data-stile="terminale"] .dz-pasto h4 { font-size: .9rem; }
+[data-stile="terminale"] .dz-timbro { rotate: 0deg; }
+[data-stile="terminale"] :is(.dz-tessera .v, .dz-lettura b) { font-weight: 700; letter-spacing: -.04em; }
+[data-stile="terminale"] .cartella:is(:focus-visible, :active, .apre) b { background: none; color: var(--blu); }
+[data-stile="terminale"] .cartella.speciale:is(:focus-visible, :active, .apre) b { color: var(--ambra); }
+@media (max-width: 560px) { #luogo { flex: 1 1 0; min-width: 0; font-size: 1.15rem; } }
+[data-stile="terminale"] .anima .nota { animation: compare .22s ease-out backwards; animation-delay: calc(min(var(--i, 0), 30) * 10ms); }
+/* sulla striscia, piccola com'è, niente macchie né pieghe */
+.nota.f-striscia .faccia::before, .nota.f-striscia.m-piega .faccia::after { display: none; }

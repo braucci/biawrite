@@ -8,7 +8,7 @@
 (() => {
   'use strict';
 
-  const VERSIONE = '1.7.1';
+  const VERSIONE = '1.8.0';
   const CFG = Object.assign({ repository: 'biawrite-note', cartella: 'note' }, window.BIAWRITE_CONFIG || {});
   const COLORI = ['giallo', 'arancio', 'rosa', 'lilla', 'azzurro', 'verde', 'carta', 'grigio'];
   const NOMI_COLORI = { giallo: 'Giallo', arancio: 'Arancio', rosa: 'Rosa', lilla: 'Lilla', azzurro: 'Azzurro', verde: 'Verde', carta: 'Bianco', grigio: 'Grigio' };
@@ -16,6 +16,7 @@
   const QUIETE_MS = 3000, MASSIMA_ATTESA_MS = 30000;          // invio dopo 3 s di quiete, comunque ogni 30 s
 
   const Core = window.BiaCore, Arch = window.BiaArchivio, Imp = window.BiaImporta;
+  const Meteo = window.BiaMeteo || null;                         // modulo «meteo» della plancia (facoltativo)
   const Cru = window.BiaCruscotto || null;                       // modulo «diario alimentare» (facoltativo)
   const CARTELLA_DIARIO = String(CFG.diario || 'diario'), PERCORSO_DIARIO = CARTELLA_DIARIO + '/diario-alimentare.md';
   const { esc, escA } = Core;
@@ -158,7 +159,7 @@
       const prima = m ? (estensione(n.name) === 'txt' ? m[1] : Core.mdToText(m[1])).trim().toLowerCase() : '';
       if (prima && prima === titoloDi(n).trim().toLowerCase()) t = t.slice(m[0].length);
     }
-    if (t.length > 700) { t = t.slice(0, 700); const k = t.lastIndexOf('\n'); if (k > 200) t = t.slice(0, k); }
+    if (t.length > 1100) { t = t.slice(0, 1100); const k = t.lastIndexOf('\n'); if (k > 200) t = t.slice(0, k); }
     const html = estensione(n.name) === 'txt' ? Core.textToHtml(t) : Core.mdToHtml(t);
     memo.set(n, { rev: n.rev, html });
     return html;
@@ -199,7 +200,9 @@
   const MESI = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
   /* La cartella di una nota è il mese in cui è nata: non cambia quando la si ritocca. */
   const mese = n => { const d = new Date(n.creata || n.modified); return d.getFullYear() + '-' + due(d.getMonth() + 1); };
-  const nomeMese = m => MESI[+m.slice(5) - 1] + ' ' + m.slice(0, 4);
+  const FISSATE = 'fissate';                                      // la cartella delle note con la puntina
+  const nomeMese = m => (m === FISSATE ? 'Fissate' : MESI[+m.slice(5) - 1] + ' ' + m.slice(0, 4));
+  const inCartella = (n, c) => (c === FISSATE ? !!n.pinned : mese(n) === c);
   let cartellaAperta = null, scrollRadice = 0, appenaFissata = null, timerAnima = 0;
   const ridotto = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
   const perMesi = () => S.bacheca !== 'tutte';
@@ -208,11 +211,19 @@
    * nascita, sincronizzata nell'indice): lo stesso foglietto ha lo stesso aspetto sul Mac e sul telefono. */
   const impronta = n => n.creata ? 'c' + n.creata : 'n' + n.name;
   const fissaPer = txt => S.fisso === 'sempre' || ((S.fisso || 'txt') === 'txt' && txt);
+  /* Il formato lo decide il contenuto, così è lo stesso su ogni dispositivo: una riga sta su una
+   * striscia, un testo lungo su una scheda da schedario, il testo semplice su un foglio di tabulato. */
+  function formato(n) {
+    const righe = n.content.split('\n').filter(l => l.trim()).length, lung = n.content.trim().length;
+    if (lung < 90 && righe <= 2) return 'striscia';
+    if (estensione(n.name) === 'txt') return righe <= 7 ? 'tabulato corto' : 'tabulato';
+    return lung > 650 || righe > 14 ? 'scheda' : 'foglietto';
+  }
   function scheda(n, i, data) {
     const ext = estensione(n.name);
     const fuori = collegato() && (n.dirty || n.metaDirty || !n.path);
     const m = segni(impronta(n));
-    return '<article class="nota' + (n.pinned ? ' fissata' : '') + m.cls + '" data-id="' + escA(n.id) + '" data-colore="' + escA(n.color) +
+    return '<article class="nota f-' + formato(n) + (n.pinned ? ' fissata' : '') + m.cls + '" data-id="' + escA(n.id) + '" data-colore="' + escA(n.color) +
       '" style="' + posa(impronta(n)) + m.st + ';--i:' + i + '" tabindex="0" role="button" aria-label="' +
       escA('Apri: ' + titoloDi(n) + (n.pinned ? ' (fissata in alto)' : '')) + '">' +
       (n.pinned ? '<svg class="puntina' + (n.id === appenaFissata ? ' conficcata' : '') + '" viewBox="0 0 34 40" aria-hidden="true"><use href="#puntina"/></svg>' : '') +
@@ -223,16 +234,14 @@
       '<button class="altro" aria-label="Colore, nome, elimina" aria-haspopup="menu"><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="12" cy="19" r="1.7"/></svg></button>' +
       '</article>';
   }
+  /* Una cartella come nel Finder: icona piccola, nome sotto, e i colori delle note come pallini. */
   function cartellaHtml(m, lista, i) {
-    let h = 0;
-    for (const c of m) h = Math.imul(h ^ c.charCodeAt(0), 16777619) >>> 0;
-    const r = ((h & 255) / 255 * 2 - 1) * 1.4;
     const colori = lista.slice().sort((a, b) => b.modified - a.modified).slice(0, 4).map(n => n.color);
-    const sg = segni('cartella' + m, true);
-    return '<button class="cartella' + sg.cls + '" data-mese="' + m + '" style="--r:' + r.toFixed(2) + 'deg;--i:' + i + sg.st + '" aria-label="' +
-      escA(nomeMese(m) + ', ' + quanti(lista.length)) + '"><span class="retro"></span><span class="fogli">' +
-      colori.map((c, k) => '<i data-colore="' + escA(c) + '" style="--k:' + k + '"></i>').join('') +
-      '</span><span class="fronte"><b>' + MESI[+m.slice(5) - 1] + '</b><small>' + quanti(lista.length) + '</small></span></button>';
+    const speciale = m === FISSATE;
+    return '<button class="cartella' + (speciale ? ' speciale' : '') + '" data-mese="' + m + '" style="--i:' + i + '" aria-label="' + escA(nomeMese(m) + ', ' + quanti(lista.length)) + '">' +
+      '<span class="ic" aria-hidden="true">' + (speciale ? '<svg class="spilla" viewBox="0 0 34 40"><use href="#puntina"/></svg>' : '') + '</span>' +
+      '<b>' + (speciale ? 'Fissate' : MESI[+m.slice(5) - 1]) + '</b><small>' + quanti(lista.length) + '</small>' +
+      '<span class="fogli" aria-hidden="true">' + colori.map((c, k) => '<i data-colore="' + escA(c) + '" style="--k:' + k + '"></i>').join('') + '</span></button>';
   }
 
   /* Tre modi: la radice (puntine in testa, poi anni e cartelle dei mesi), l'interno di una cartella,
@@ -240,7 +249,7 @@
   function disegna(opz) {
     const q = elCerca.value.trim().toLowerCase();
     const vive = [...note.values()].filter(n => !n.deleted);
-    if (cartellaAperta && !vive.some(n => mese(n) === cartellaAperta)) cartellaAperta = null;     // cartella rimasta vuota
+    if (cartellaAperta && !vive.some(n => inCartella(n, cartellaAperta))) cartellaAperta = null;     // cartella rimasta vuota
     const modo = q ? 'ricerca' : !perMesi() ? 'tutte' : cartellaAperta ? 'cartella' : 'radice';
     app.dataset.cartella = modo === 'cartella' ? '1' : '';
     $('#luogo').textContent = modo === 'cartella' ? nomeMese(cartellaAperta) : '';
@@ -255,8 +264,7 @@
       for (const n of vive) { const m = mese(n); if (!gruppi.has(m)) gruppi.set(m, []); gruppi.get(m).push(n); }
       const mesi = [...gruppi.keys()].sort().reverse();
       let k = 0;
-      if (fissate.length) html += '<div class="griglia fissate">' + fissate.map(n => scheda(n, k++)).join('') + '</div>';
-      if (conDiario()) html += '<div class="griglia cartelle moduli">' + Cru.cartellaHtml(k++) + '</div>';
+      if (fissate.length) html += '<div class="griglia cartelle in-testa">' + cartellaHtml(FISSATE, fissate, k++) + '</div>';
       let anno = null;
       for (const m of mesi) {
         const a = m.slice(0, 4);
@@ -272,19 +280,22 @@
       quante = vive.length;
     } else {
       let elenco;
-      if (modo === 'cartella') elenco = vive.filter(n => mese(n) === cartellaAperta).sort((a, b) => (!!b.pinned - !!a.pinned) || (b.creata || b.modified) - (a.creata || a.modified));
+      if (modo === 'cartella' && cartellaAperta === FISSATE) elenco = vive.filter(n => n.pinned).sort((a, b) => b.modified - a.modified);
+      else if (modo === 'cartella') elenco = vive.filter(n => mese(n) === cartellaAperta).sort((a, b) => (!!b.pinned - !!a.pinned) || (b.creata || b.modified) - (a.creata || a.modified));
       else elenco = vive.filter(n => !q || n.name.toLowerCase().includes(q) || n.content.toLowerCase().includes(q))
         .sort((a, b) => (!!b.pinned - !!a.pinned) || b.modified - a.modified);
       const fissate = elenco.filter(n => n.pinned).length;
       const tutti = elenco.length;
       if (osservatore) elenco.splice(limite);
-      html = (modo === 'tutte' && conDiario() ? '<div class="griglia cartelle moduli">' + Cru.cartellaHtml(0) + '</div>' : '') +
-        '<div class="griglia">' + elenco.map((n, i) => (i === fissate && fissate ? '<div class="stacco-fissate" aria-hidden="true"></div>' : '') +
-        scheda(n, i, modo === 'cartella' ? 'creata' : 'modificata')).join('') +
+      // le note con la puntina hanno una fila loro: i formati diversi si incastrano, e non devono mescolarsi alle altre
+      const come = modo === 'cartella' && cartellaAperta !== FISSATE ? 'creata' : 'modificata', sciolte = cartellaAperta === FISSATE && modo === 'cartella' ? 0 : fissate;
+      html = (sciolte ? '<div class="griglia fissate">' + elenco.slice(0, sciolte).map((n, i) => scheda(n, i, come)).join('') + '</div>' : '') +
+        '<div class="griglia">' + elenco.slice(sciolte).map((n, i) => scheda(n, i + sciolte, come)).join('') +
         (tutti > elenco.length ? '<div class="ancora" aria-hidden="true"></div>' : '') + '</div>';
       quante = elenco.length;
     }
     elNote.innerHTML = html;
+    plancia(modo, vive);
     appenaFissata = null;
     const ancora = elNote.querySelector('.ancora');
     if (osservatore && ancora) osservatore.observe(ancora);
@@ -295,7 +306,37 @@
     }
   }
 
-  /* Entrare in una cartella: il davanti si apre, i foglietti si alzano, poi la vista cambia. */
+  /* La plancia: la data, il tempo che fa, il diario. Sta sopra la bacheca, non dentro una cartella né durante la ricerca. */
+  let meteoEsito = null, meteoErrore = false, meteoGiro = 0;
+  function plancia(modo, vive) {
+    const el = $('#plancia');
+    const mostra = modo === 'radice' || modo === 'tutte';
+    el.hidden = !mostra;
+    if (!mostra) { el.innerHTML = ''; return; }
+    const o = new Date(), fissate = vive.filter(n => n.pinned).length;
+    el.innerHTML = '<div class="pl-data" data-t="oggi"><span class="g">' + esc(o.toLocaleDateString('it-IT', { weekday: 'long' })) + '</span><b>' + o.getDate() + '</b><span class="m">' + esc(o.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })) + '</span>' +
+      '<small>' + quanti(vive.length) + (fissate ? ' · ' + fissate + (fissate === 1 ? ' fissata' : ' fissate') : '') + '</small></div>' +
+      (Meteo ? '<div class="pl-meteo" data-t="meteo">' + Meteo.html(S.meteo || null, meteoEsito, meteoErrore) + '</div>' : '') +
+      (conDiario() ? Cru.pulsanteHtml() : '');
+  }
+  async function aggiornaMeteo(forza) {
+    if (!Meteo) return;
+    const giro = ++meteoGiro, luogo = S.meteo || null;
+    const metti = () => { const m = $('#plancia .pl-meteo'); if (m) m.innerHTML = Meteo.html(S.meteo || null, meteoEsito, meteoErrore); };
+    if (!luogo) { meteoEsito = null; meteoErrore = false; metti(); return; }
+    try { const r = await Meteo.prendi(luogo, { forza }); if (giro !== meteoGiro) return; meteoEsito = r; meteoErrore = false; }
+    catch (e) { if (giro !== meteoGiro) return; meteoErrore = true; }
+    metti();
+  }
+  $('#plancia').addEventListener('click', e => {
+    if (e.target.closest('.pl-diario')) { apriDiario(); return; }
+    const a = e.target.closest('[data-a]');
+    if (!a) return;
+    if (a.dataset.a === 'meteo-luogo') pannello().then(() => { const c = $('#meteo-cerca'); if (c) { c.scrollIntoView({ block: 'center' }); c.focus(); } });
+    else if (a.dataset.a === 'meteo-riprova') { meteoErrore = false; aggiornaMeteo(true); }
+  });
+
+  /* Entrare in una cartella: l'icona si ingrandisce e svanisce, poi la vista cambia. */
   function apriCartella(m, el) {
     const vai = () => {
       scrollRadice = $('#bacheca').scrollTop;
@@ -332,8 +373,6 @@
   }
 
   elNote.addEventListener('click', e => {
-    const rc = e.target.closest('.raccoglitore');
-    if (rc) { apriDiario(rc); return; }
     const c = e.target.closest('.cartella');
     if (c) { apriCartella(c.dataset.mese, c); return; }
     const el = e.target.closest('.nota');
@@ -1238,6 +1277,7 @@
     } else {
       if (S.lock && nascostoDa && Date.now() - nascostoDa > RIBLOCCO_MS && $('#blocco').hidden && vista() !== 'avvio') chiudiTutto();
       else if (collegato() && $('#blocco').hidden && vista() !== 'avvio') sync();
+      if (vista() === 'bacheca') { if (!$('#plancia').hidden) disegna(); aggiornaMeteo(); }          // la data può essere cambiata, il meteo invecchiato
     }
   });
   /* Se la pagina viene chiusa di colpo, il testo aperto va anche in localStorage (scrittura sincrona). */
@@ -1580,13 +1620,19 @@
       (S.lock && bio ? '<button class="tasto bordo" data-a="bio">' + (S.lock.bio ? 'Disattiva impronta o volto' : 'Attiva impronta o volto') + '</button>' : '') +
       (S.lock ? '<button class="tasto rosso" data-a="sblocca">Togli il blocco</button>' : '') + '</div>' +
       '<h3>Aspetto</h3>' +
+      '<div class="fila"><select class="campo" id="stile" aria-label="Stile"><option value="scrivania">Stile scrivania: foglietti, cartelle, carta</option><option value="terminale">Stile terminale: caratteri fissi, riquadri, righe di comando</option></select></div>' +
       '<div class="fila"><select class="campo" id="tema" aria-label="Giorno o notte"><option value="auto">Giorno e notte come il dispositivo</option><option value="giorno">Sempre giorno</option><option value="notte">Sempre notte</option></select></div>' +
       '<div class="sfondi" role="radiogroup" aria-label="Sfondo">' + [['salvia', 'Salvia', '#E2EAE0'], ['cielo', 'Cielo', '#DFE8F0'], ['cipria', 'Cipria', '#EFE3E2'], ['lavanda', 'Lavanda', '#E6E2EF'], ['menta', 'Menta', '#DBEBE5'], ['quadretti', 'Quadretti', '#E7ECEC']]
         .map(([v, t, c]) => '<button role="radio" data-v="' + v + '" title="' + t + '" aria-label="' + t + '" aria-checked="' + ((S.sfondo || 'salvia') === v) + '" style="--s:' + c + '"></button>').join('') + '</div>' +
       '<div class="fila"><select class="campo" id="ordine" aria-label="Bacheca"><option value="mesi">Bacheca in cartelle, una per mese</option><option value="tutte">Bacheca con tutte le note insieme</option></select></div>' +
-      (Cru ? '<div class="fila"><select class="campo" id="mostra-diario" aria-label="Diario alimentare"><option value="si">Cartella «Diario alimentare» in bacheca</option><option value="no">Senza la cartella del diario alimentare</option></select></div>' +
+      (Cru ? '<div class="fila"><select class="campo" id="mostra-diario" aria-label="Diario alimentare"><option value="si">Pulsante «Diario alimentare» sulla plancia</option><option value="no">Senza il diario alimentare</option></select></div>' +
         '<div class="fila"><select class="campo" id="copia-diario" aria-label="Copia del diario"><option value="si">Diario: copia nel repository privato, per gli altri dispositivi</option><option value="no">Diario: solo su questo dispositivo, nessuna copia</option></select></div>' +
         '<p class="nota-bene">Il file del diario è sempre e solo letto: BiaWrite non lo può modificare.</p>' : '') +
+      (Meteo ? '<h3>Meteo</h3>' +
+        '<div class="fila"><input class="campo" id="meteo-cerca" type="search" placeholder="Località, per esempio Napoli" aria-label="Località per il meteo" autocomplete="off"><button class="tasto bordo" id="meteo-trova">Cerca</button></div>' +
+        '<div id="meteo-esiti" class="esiti" aria-live="polite"></div>' +
+        '<div class="fila"><button class="tasto bordo" id="meteo-qui">Usa la posizione di questo dispositivo</button><button class="tasto" id="meteo-via">Nessun meteo</button></div>' +
+        '<p class="nota-bene" id="meteo-dove"></p>' : '') +
       '<h3>Scrittura</h3>' +
       '<div class="fila"><select class="campo" id="spazio" aria-label="Spazio fra i capoversi">' +
         '<option value="stretto">Capoversi appena staccati</option><option value="nessuno">Capoversi senza spazio, come a macchina</option>' +
@@ -1597,6 +1643,27 @@
       '<p class="nota-bene">BiaWrite ' + VERSIONE + '</p>' +
       '<div class="azioni"><button class="tasto pieno" data-a="chiudi">Chiudi</button></div>';
     const tema = () => { if (window.BiaTema) BiaTema.applica(S); };
+    $('#stile', c).value = S.stile === 'terminale' ? 'terminale' : 'scrivania';
+    $('#stile', c).onchange = e => { S.stile = e.target.value; salvaS(); tema(); disegna(); };
+    if (Meteo) {
+      const esiti = $('#meteo-esiti', c), dove = $('#meteo-dove', c), campo = $('#meteo-cerca', c);
+      const dici = () => { dove.textContent = S.meteo ? 'Località: ' + S.meteo.nome + (S.meteo.dove ? ' (' + S.meteo.dove + ')' : '') + '. Il meteo viene chiesto a Open-Meteo inviando solo le coordinate, arrotondate.' : 'Nessuna località: il meteo è spento e non viene chiesto nulla.'; };
+      const scegli = l => { S.meteo = l; salvaS(); esiti.textContent = ''; dici(); meteoEsito = null; meteoErrore = false; aggiornaMeteo(true); };
+      const trova = async () => {
+        if (!campo.value.trim()) return;
+        esiti.textContent = 'Cerco…';
+        try {
+          const r = await Meteo.cerca(campo.value);
+          esiti.textContent = r.length ? '' : 'Nessuna località con questo nome.';
+          for (const l of r) { const b = document.createElement('button'); b.className = 'esito'; b.textContent = l.nome + (l.dove ? ' — ' + l.dove : ''); b.onclick = () => scegli(l); esiti.appendChild(b); }
+        } catch (e) { esiti.textContent = 'La ricerca non è riuscita: serve la rete.'; }
+      };
+      $('#meteo-trova', c).onclick = trova;
+      campo.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); trova(); } };
+      $('#meteo-qui', c).onclick = async () => { try { scegli(await Meteo.qui()); } catch (e) { avviso(e.message); } };
+      $('#meteo-via', c).onclick = () => scegli(null);
+      dici();
+    }
     $('#tema', c).value = S.tema || 'auto';
     $('#tema', c).onchange = e => { S.tema = e.target.value; salvaS(); tema(); };
     c.querySelectorAll('.sfondi button').forEach(b => b.onclick = () => {
@@ -1644,6 +1711,7 @@
   function entra() {
     app.dataset.vista = 'bacheca';
     disegna();
+    aggiornaMeteo();
     if (history.state && history.state.diario && conDiario()) mostraDiario();
     aggiornaStato();
     if (collegato()) sync();

@@ -615,22 +615,23 @@
   }
   function chiudi() { aperto = false; if (el) fumetto(null); }
 
-  /* ------------------------------------------------------------ la cartella nella bacheca */
-  function cartellaHtml(i) {
-    let riga = 'tocca per caricare il diario', graf = '';
+  /* ------------------------------------------------------------ il pulsante sulla plancia */
+  function pulsanteHtml() {
+    let riga = 'scegli il file del diario', etichetta = 'tocca per caricare il diario', graf = '';
     if (modello) {
-      const gg = modello.giorni, u = gg[gg.length - 1], ult = gg.slice(-12);
-      riga = gg.length + (gg.length === 1 ? ' giorno' : ' giorni') + ' · ' + corta(u.data);
-      const max = Math.max(...ult.map(g => g.kcal || 0), modello.rif.target || 0, 1) * 1.1;
-      graf = '<svg viewBox="0 0 120 54" preserveAspectRatio="none" aria-hidden="true">' + (modello.rif.target ? '<line x1="0" x2="120" y1="' + (54 - modello.rif.target / max * 50).toFixed(1) + '" y2="' + (54 - modello.rif.target / max * 50).toFixed(1) + '"/>' : '') +
-        ult.map((g, k) => '<rect x="' + (6 + k * 9) + '" width="6" y="' + (54 - (g.kcal || 0) / max * 50).toFixed(1) + '" height="' + ((g.kcal || 0) / max * 50).toFixed(1) + '"' + (g.stato === 'corso' ? ' class="c"' : '') + '/>').join('') + '</svg>';
+      const gg = modello.giorni, u = gg[gg.length - 1], ult = gg.slice(-12), soglia = u.soglia || modello.rif.target;
+      etichetta = gg.length + (gg.length === 1 ? ' giorno' : ' giorni') + ' · ' + corta(u.data);
+      riga = corta(u.data) + ' · ' + n0(u.kcal) + (soglia ? ' di ' + n0(soglia) : '') + ' kcal';
+      const max = Math.max(...ult.map(g => g.kcal || 0), soglia || 0, 1) * 1.08;
+      graf = '<svg class="pl-graf" viewBox="0 0 ' + (ult.length * 7 + 1) + ' 30" aria-hidden="true">' + (soglia ? '<line x1="0" x2="' + (ult.length * 7 + 1) + '" y1="' + (30 - soglia / max * 28).toFixed(1) + '" y2="' + (30 - soglia / max * 28).toFixed(1) + '"/>' : '') +
+        ult.map((g, k) => '<rect x="' + (1 + k * 7) + '" width="5" rx="1" y="' + (30 - (g.kcal || 0) / max * 28).toFixed(1) + '" height="' + ((g.kcal || 0) / max * 28).toFixed(1) + '"' + (g.stato === 'corso' ? ' class="c"' : '') + '/>').join('') + '</svg>';
     }
-    return '<button class="raccoglitore" style="--i:' + (i || 0) + '" aria-label="' + escA('Diario alimentare, ' + riga) + '"><span class="rc-retro"></span><span class="rc-foglio">' + graf + '</span>' +
-      '<span class="rc-fronte"><span class="rc-etichetta"><b>Diario alimentare</b><small>' + esc(riga) + '</small></span></span></button>';
+    return '<button class="pl-diario" data-t="diario" aria-label="' + escA('Diario alimentare, ' + etichetta) + '"><svg class="pl-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V9M9.3 19V5M14.6 19v-7M20 19V8"/></svg>' +
+      '<span class="pl-testo"><b>Diario alimentare</b><small>' + esc(riga) + '</small></span>' + graf + '</button>';
   }
 
   root.BiaCruscotto = {
-    avvia, apri, chiudi, imposta, segnaInviato, svuota, aggiorna, rileggi, cartellaHtml,
+    avvia, apri, chiudi, imposta, segnaInviato, svuota, aggiorna, rileggi, pulsanteHtml,
     stato: () => ({ testo: st.testo, sha: st.sha, sporco: st.sporco, origine: st.origine, giorni: modello ? modello.giorni.length : 0 }),
     get modello() { return modello; }, get indicatori() { return ind; },
   };

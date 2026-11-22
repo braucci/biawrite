@@ -217,8 +217,11 @@ export async function dispositivo(br, G, url, nome, opz = {}) {
   p.on('pageerror', e => console.log(`  [${nome}] ERRORE PAGINA`, e.message));
   p.on('console', m => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) console.log(`  [${nome}] console.error:`, m.text().slice(0, 300)); });
   await p.goto(url);
+  await pronta(p);
   return { ctx, p };
 }
+/* L'app è pronta quando ha deciso che cosa mostrare: il benvenuto, il blocco o la bacheca. */
+export const pronta = p => p.waitForFunction(() => { const a = document.querySelector('#app'); return (a && a.dataset.vista !== 'avvio') || ['#benvenuto', '#blocco'].some(s => { const e = document.querySelector(s); return e && !e.hidden; }); }, null, { timeout: 8000 }).catch(() => {});
 export const stato = p => p.evaluate(() => BiaWrite.stato());
 export const attendiOk = async (p, ms = 9000) => { await p.waitForFunction(() => BiaWrite.stato() === 'ok', null, { timeout: ms }).catch(() => {}); return stato(p); };
 export async function collega(p, repo, chiave, { pin = false, tocco = false } = {}) {
@@ -230,4 +233,34 @@ export async function collega(p, repo, chiave, { pin = false, tocco = false } = 
 }
 export async function infondo(p) {
   await p.evaluate(() => { const c = document.querySelector('#carta'); const r = document.createRange(); r.selectNodeContents(c); r.collapse(false); const s = getSelection(); s.removeAllRanges(); s.addRange(r); c.focus(); });
+}
+
+
+/* Un Open-Meteo finto: previsioni e ricerca delle località, senza toccare la rete.
+ * `stato` si può cambiare durante la prova: { codice, t, giu: true (servizio irraggiungibile) }. Conta le richieste. */
+export async function meteoFinto(ctx, stato = {}) {
+  stato.previsioni = 0; stato.ricerche = 0; stato.url = [];
+  await ctx.route('https://api.open-meteo.com/**', route => {
+    stato.previsioni++; stato.url.push(route.request().url());
+    if (stato.giu) return route.abort();
+    const ora = new Date(), due = n => String(n).padStart(2, '0');
+    const iso = d => d.getFullYear() + '-' + due(d.getMonth() + 1) + '-' + due(d.getDate()) + 'T' + due(d.getHours()) + ':00';
+    const tempi = [], base = new Date(ora.getFullYear(), ora.getMonth(), ora.getDate());
+    for (let i = 0; i < 48; i++) tempi.push(iso(new Date(base.getTime() + i * 3600000)));
+    const t = stato.t == null ? 14.4 : stato.t, codice = stato.codice == null ? 2 : stato.codice;
+    route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({
+      latitude: 40.85, longitude: 14.25, timezone: 'Europe/Rome',
+      current: { time: iso(ora).slice(0, 14) + due(ora.getMinutes() - ora.getMinutes() % 15), temperature_2m: t, apparent_temperature: t - 2.6, weather_code: codice, wind_speed_10m: 11.8, relative_humidity_2m: 71, is_day: 1, precipitation: 0 },
+      hourly: { time: tempi, temperature_2m: tempi.map((x, i) => t - 4 + 5 * Math.sin((i % 24 - 9) / 24 * 2 * Math.PI)), weather_code: tempi.map((x, i) => [2, 3, 61, 80, 0, 1][Math.floor(i / 3) % 6]), precipitation_probability: tempi.map((x, i) => [5, 20, 70, 55, 0, 10][Math.floor(i / 3) % 6]), is_day: tempi.map((x, i) => (i % 24 >= 7 && i % 24 < 17 ? 1 : 0)) },
+      daily: { time: [iso(base).slice(0, 10), iso(new Date(base.getTime() + 86400000)).slice(0, 10)], weather_code: [codice, 61], temperature_2m_max: [16.6, 13.2], temperature_2m_min: [9.1, 8.4], precipitation_probability_max: [30, 80] },
+    }) });
+  });
+  await ctx.route('https://geocoding-api.open-meteo.com/**', route => {
+    stato.ricerche++; stato.url.push(route.request().url());
+    if (stato.giu) return route.abort();
+    const nome = new URL(route.request().url()).searchParams.get('name') || '';
+    const esiti = /^zzz/i.test(nome) ? [] : [{ id: 1, name: 'Napoli', latitude: 40.85216, longitude: 14.26811, country: 'Italia', admin1: 'Campania', admin2: 'Napoli' }, { id: 2, name: 'Napoli', latitude: 43.0, longitude: -75.5, country: 'Stati Uniti', admin1: 'New York' }];
+    route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(esiti.length ? { results: esiti } : {}) });
+  });
+  return stato;
 }

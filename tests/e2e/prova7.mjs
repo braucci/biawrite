@@ -43,20 +43,20 @@ const impostazioni = async fn => { await p.click('#impostazioni'); await p.waitF
 const errori = [];
 p.on('pageerror', e => errori.push(e.message));
 
-console.log('A. La radice: puntine, poi anni e cartelle dei mesi');
+console.log('A. La radice: la cartella delle note fissate, poi anni e cartelle dei mesi');
 const r = await p.evaluate(() => ({
   anni: [...document.querySelectorAll('#note h2.anno')].map(h => h.textContent.replace(/\s+/g, ' ').trim()),
-  mesi: [...document.querySelectorAll('#note .cartella')].map(c => c.dataset.mese),
-  etichette: [...document.querySelectorAll('#note .cartella')].map(c => c.getAttribute('aria-label')),
+  mesi: [...document.querySelectorAll('#note .cartella:not(.speciale)')].map(c => c.dataset.mese),
+  etichette: [...document.querySelectorAll('#note .cartella:not(.speciale)')].map(c => c.getAttribute('aria-label')),
   primo: document.querySelector('#note > :first-child').className,
-  fissate: [...document.querySelectorAll('#note .griglia.fissate .nota')].map(e => BiaWrite.note.get(e.dataset.id).name),
-  sciolte: document.querySelectorAll('#note .griglia.cartelle .nota').length,
+  fissate: [...document.querySelectorAll('#note > :first-child .cartella.speciale')].map(e => e.getAttribute('aria-label')),
+  sciolte: document.querySelectorAll('#note .nota').length,
   foglietti: document.querySelector('.cartella[data-mese="2026-11"]').querySelectorAll('.fogli i').length,
 }));
 verifica(JSON.stringify(r.anni) === JSON.stringify(['2026 36 note', '2025 1 nota']), 'anni dal più recente, ciascuno con il conto delle sue note', r.anni);
 verifica(JSON.stringify(r.mesi) === JSON.stringify(['2026-11', '2026-10', '2026-09', '2026-03', '2025-12']), 'una cartella per ogni mese, dal più recente', r.mesi);
 verifica(r.etichette[0] === 'Novembre 2026, 3 note' && r.etichette[2] === 'Settembre 2026, 30 note', 'la cartella dice mese, anno e quante note contiene', r.etichette);
-verifica(r.primo.includes('fissate') && JSON.stringify(r.fissate) === JSON.stringify(['Promemoria.md']), 'le note con la puntina restano in testa, fuori dalle cartelle', r);
+verifica(r.primo.includes('in-testa') && JSON.stringify(r.fissate) === JSON.stringify(['Fissate, 1 nota']), 'le note con la puntina stanno in una cartella loro, «Fissate», in testa a tutte', r);
 verifica(r.sciolte === 0, 'nella radice non ci sono note sciolte');
 verifica(r.foglietti === 3, 'dalla cartella spuntano i foglietti colorati delle sue note', r.foglietti);
 verifica(r.mesi.includes('2025-12') && r.etichette[0].includes('3 note'), 'la cartella è il mese in cui la nota è nata, non quello dell\'ultima modifica (Natale 2025 ritoccata a novembre 2026)');
@@ -72,7 +72,7 @@ const animaSubito = await finche(() => p.evaluate(() => document.querySelector('
 await finche(async () => (await luogo()) === 'Novembre 2026', 3000);
 verifica((await luogo()) === 'Novembre 2026', 'in alto il nome della cartella aperta');
 verifica(JSON.stringify(await nomiSchede()) === JSON.stringify(['Bozza novembre B.md', 'Codice.txt', 'Bozza novembre A.md']), 'dentro: le note del mese, dalla più recente per data di nascita', await nomiSchede());
-verifica(await p.locator('#note .cartella').count() === 0, 'dentro la cartella niente altre cartelle');
+verifica(await p.locator('#note .cartella:not(.speciale)').count() === 0, 'dentro la cartella niente altre cartelle');
 verifica((await visibile('#indietro')) && !(await visibile('#marchio')), 'compare la freccia per tornare indietro');
 verifica(animaSubito, 'le note entrano con un movimento');
 await pausa(1500);
@@ -87,7 +87,7 @@ await p.waitForFunction(() => document.querySelector('#app').dataset.vista === '
 verifica((await luogo()) === 'Novembre 2026', 'chiudendo una nota si torna nella sua cartella');
 await p.click('#indietro');
 await finche(async () => (await luogo()) === '', 3000);
-verifica((await luogo()) === '' && await p.locator('#note .cartella').count() === 5, 'la freccia riporta alla radice');
+verifica((await luogo()) === '' && await p.locator('#note .cartella:not(.speciale)').count() === 5, 'la freccia riporta alla radice');
 await p.click('.cartella[data-mese="2026-10"]');
 await finche(async () => (await luogo()) === 'Ottobre 2026', 3000);
 const ott = await nomiSchede();
@@ -102,8 +102,8 @@ await p.reload();
 await finche(async () => (await luogo()) === 'Ottobre 2026' && (await p.locator('#note .nota').count()) === 2, 8000);
 verifica((await luogo()) === 'Ottobre 2026' && await p.locator('#note .nota').count() === 2, 'ricaricando la pagina si resta nella cartella');
 await p.click('#indietro');
-await finche(async () => (await p.locator('#note .cartella').count()) === 5, 3000);
-verifica((await luogo()) === '' && await p.locator('#note .cartella').count() === 5, 'e la freccia riporta comunque alla radice');
+await finche(async () => (await p.locator('#note .cartella:not(.speciale)').count()) === 5, 3000);
+verifica((await luogo()) === '' && await p.locator('#note .cartella:not(.speciale)').count() === 5, 'e la freccia riporta comunque alla radice');
 await attendiOk(p);
 
 console.log('C. Una nota nuova finisce nella cartella del suo mese');
@@ -143,21 +143,21 @@ verifica(nuove.length === 2 && Object.values(idx).every(v => Object.keys(v).ever
 console.log('D. Ricerca ed elenco unico');
 await p.fill('#cerca', 'bozza');
 await finche(async () => (await p.locator('#note .nota').count()) === 2, 2000);
-verifica(await p.locator('#note .nota').count() === 2 && await p.locator('#note .cartella').count() === 0, 'la ricerca attraversa tutte le cartelle');
+verifica(await p.locator('#note .nota').count() === 2 && await p.locator('#note .cartella:not(.speciale)').count() === 0, 'la ricerca attraversa tutte le cartelle');
 await p.fill('#cerca', '');
-await finche(async () => (await p.locator('#note .cartella').count()) > 0, 2000);
-verifica(await p.locator('#note .cartella').count() === 5, 'cancellata la ricerca, tornano le cartelle');
+await finche(async () => (await p.locator('#note .cartella:not(.speciale)').count()) > 0, 2000);
+verifica(await p.locator('#note .cartella:not(.speciale)').count() === 5, 'cancellata la ricerca, tornano le cartelle');
 await impostazioni(() => p.selectOption('#ordine', 'tutte'));
-verifica(await p.locator('#note .cartella').count() === 0 && await p.locator('#note .nota').count() === 39, 'chi preferisce, può tornare alla bacheca con tutte le note insieme');
+verifica(await p.locator('#note .cartella:not(.speciale)').count() === 0 && await p.locator('#note .nota').count() === 39, 'chi preferisce, può tornare alla bacheca con tutte le note insieme');
 await impostazioni(() => p.selectOption('#ordine', 'mesi'));
-verifica(await p.locator('#note .cartella').count() === 5, 'e rimettere le cartelle');
+verifica(await p.locator('#note .cartella:not(.speciale)').count() === 5, 'e rimettere le cartelle');
 
 console.log('E. Notte e giorno');
 const aspetto = () => p.evaluate(() => {
   const h = document.documentElement, cs = getComputedStyle(h);
   const lum = c => { const m = c.match(/\d+(\.\d+)?/g).map(Number); return (0.2126 * m[0] + 0.7152 * m[1] + 0.0722 * m[2]) / 255; };
   const sfondo = getComputedStyle(document.querySelector('#app')).backgroundColor;
-  const nota = getComputedStyle(document.querySelector('.cartella .fronte') || document.querySelector('.nota .faccia')).backgroundColor;
+  const nota = '';
   return { notte: h.classList.contains('notte'), sfondo, chiaro: lum(sfondo), meta: document.querySelector('meta[name="theme-color"]').content, tavolo: cs.getPropertyValue('--tavolo').trim(), schema: cs.colorScheme, nota };
 });
 await impostazioni(() => p.selectOption('#tema', 'notte'));
@@ -176,7 +176,7 @@ const n4 = await aspetto();
 verifica(n3.notte && !n4.notte, '«come il dispositivo» segue il giorno e la notte del sistema, anche mentre l\'app è aperta', { n3: n3.notte, n4: n4.notte });
 await impostazioni(() => p.selectOption('#tema', 'notte'));
 await p.reload();
-await p.waitForSelector('#note .cartella', { timeout: 8000 });
+await p.waitForSelector('#note .cartella', { timeout: 8000 }); await pausa(200);
 const primaDelDisegno = await p.evaluate(() => { const s = document.querySelector('head script[src="tema.js"]'); return !!s && !s.defer && !s.async && s.type !== 'module'; });
 verifica((await aspetto()).notte && primaDelDisegno, 'la scelta resta, e il tema è deciso prima di disegnare la pagina (nessun lampo bianco)');
 
@@ -293,8 +293,12 @@ await p.click('#menu .voce >> text=Fissa in alto');
 await pausa(120);
 const piantata = await p.evaluate(() => { const e = document.querySelector('#note .nota:first-child .puntina.conficcata'); return e ? getComputedStyle(e).animationName : null; });
 await p.click('#indietro');
-await finche(async () => (await p.locator('#note .griglia.fissate .nota').count()) === 2, 3000);
-verifica(await p.locator('#note .griglia.fissate .nota').count() === 2, 'la nota fissata dalla cartella sale in testa alla radice');
+await finche(async () => (await p.getAttribute('#note .cartella.speciale', 'aria-label')) === 'Fissate, 2 note', 3000);
+verifica(await p.getAttribute('#note .cartella.speciale', 'aria-label') === 'Fissate, 2 note', 'la nota fissata dalla cartella entra nella cartella «Fissate»');
+await p.click('#note .cartella.speciale');
+await finche(async () => (await luogo()) === 'Fissate', 3000);
+verifica((await luogo()) === 'Fissate' && await p.locator('#note .nota.fissata').count() === 2 && await p.locator('#note .nota').count() === 2, 'che si apre come le altre e contiene solo le note con la puntina', await nomiSchede());
+await p.click('#indietro'); await finche(async () => (await luogo()) === '', 3000);
 verifica(piantata === 'conficca', 'la puntina si pianta con un piccolo colpo', piantata);
 await p.click('.cartella[data-mese="2026-09"]');
 await finche(async () => (await p.locator('#note .nota').count()) === 30, 3000);
@@ -324,8 +328,8 @@ console.log('L. Al telefono');
 const T = await dispositivo(br, G, URL_, 'T', { cartelle: true, viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
 await collega(T.p, G.repo, BUONA, { tocco: true });
 await attendiOk(T.p, 20000);
-await finche(() => T.p.evaluate(() => document.querySelectorAll('#note .cartella').length === 5));
-const tel = await T.p.evaluate(() => { const c = [...document.querySelectorAll('#note .cartella')].map(e => e.getBoundingClientRect()); return { per: c.filter(x => Math.abs(x.top - c[0].top) < 4).length, dentro: c.every(x => x.right <= innerWidth + 1 && x.left >= -1), largo: document.documentElement.scrollWidth <= innerWidth }; });
+await finche(() => T.p.evaluate(() => document.querySelectorAll('#note .cartella:not(.speciale)').length === 5));
+const tel = await T.p.evaluate(() => { const c = [...document.querySelectorAll('#note .cartella:not(.speciale)')].map(e => e.getBoundingClientRect()); return { per: c.filter(x => Math.abs(x.top - c[0].top) < 4).length, dentro: c.every(x => x.right <= innerWidth + 1 && x.left >= -1), largo: document.documentElement.scrollWidth <= innerWidth }; });
 verifica(tel.per >= 2 && tel.dentro && tel.largo, 'sul telefono le cartelle stanno affiancate, senza uscire dallo schermo', tel);
 if (FOTO) { await T.p.screenshot({ path: 'telefono-radice.png' }); }
 await T.p.tap('.cartella[data-mese="2026-09"]');

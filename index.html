@@ -6,7 +6,7 @@
 <title>BiaWrite</title>
 <meta name="description" content="Appunti e articoli in Markdown, conservati in un repository privato di GitHub.">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://api.github.com; img-src 'self' data: blob: https: http:; font-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://api.github.com https://api.open-meteo.com https://geocoding-api.open-meteo.com; img-src 'self' data: blob: https: http:; font-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="theme-color" content="#E7ECEC" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#1A2123" media="(prefers-color-scheme: dark)">
 <meta name="mobile-web-app-capable" content="yes">
@@ -153,46 +153,6 @@ html[data-sfondo="quadretti"] #bacheca {
 .griglia.fissate { padding-bottom: 6px; }
 .griglia.cartelle { gap: 20px 16px; }
 @media (min-width: 640px) { .griglia.cartelle { grid-template-columns: repeat(auto-fill, minmax(172px, 1fr)); gap: 30px 26px; } }
-/* Una cartellina di cartoncino: il retro con la linguetta, i foglietti che spuntano, il davanti con l'etichetta.
-   Passandoci sopra il davanti si apre un poco e i foglietti si alzano. */
-.cartella {
-  --r: 0deg; --dx: 0px; --dy: 0px;
-  position: relative; display: block; width: 100%; aspect-ratio: 5 / 4; perspective: 650px; text-align: left; color: #3B2F1B;
-  rotate: var(--r); translate: var(--dx) var(--dy);
-  filter: drop-shadow(0 1px 1px rgba(var(--ombra), .22)) drop-shadow(0 9px 9px rgba(var(--ombra), .16));
-  transition: rotate .5s var(--molla), translate .5s var(--molla), scale .35s var(--molla);
-}
-.cartella .retro {
-  position: absolute; inset: 0; border-radius: 5px;
-  background: var(--grana), linear-gradient(180deg, #D9C08A, #CFB47A);
-  clip-path: polygon(0 10%, 3% 0, 40% 0, 44% 10%, 100% 10%, 100% 100%, 0 100%);
-}
-.cartella .fogli { position: absolute; left: 7%; right: 7%; top: 13%; height: 46%; }
-.cartella .fogli i {
-  position: absolute; top: calc(var(--k) * 5px); left: calc(var(--k) * 20%); width: 36%; aspect-ratio: 1;
-  background: var(--grana), var(--c); rotate: calc((var(--k) - 1.5) * 5deg); box-shadow: 0 1px 2px rgba(0, 0, 0, .16);
-  transition: translate .55s var(--molla); transition-delay: calc(var(--k) * 30ms);
-}
-.cartella .fronte {
-  position: absolute; left: 0; right: 0; bottom: 0; height: 72%; padding: 10px 12px 11px; border-radius: 4px 4px 6px 6px;
-  display: flex; flex-direction: column; justify-content: flex-end; gap: 1px;
-  background: var(--grana), linear-gradient(172deg, #F3E3B9 0%, #EBD6A3 55%, #E3CC95 100%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55), 0 -3px 8px rgba(60, 40, 10, .10);
-  transform-origin: 50% 100%; transition: transform .55s var(--molla); overflow: hidden;
-}
-.cartella .fronte::before {                 /* un alone sul cartoncino, di tanto in tanto: in alto a destra, lontano dall'etichetta */
-  content: ""; position: absolute; left: calc(50% + var(--mx) * .3); top: calc(var(--my) * .5 - 26%); width: calc(var(--ms) * 1.1); aspect-ratio: 1; rotate: var(--mr);
-  background: var(--segno, none) center / contain no-repeat; mix-blend-mode: multiply; pointer-events: none;
-}
-.cartella b { position: relative; font: 700 1.3rem/1.05 var(--mano); }
-.cartella small { position: relative; font: .74rem var(--comandi); color: rgba(59, 47, 27, .7); }
-.cartella:hover, .cartella:focus-visible { translate: 0 -4px; z-index: 2; }
-.cartella:hover .fronte, .cartella:focus-visible .fronte { transform: rotateX(-17deg); }
-.cartella:hover .fogli i, .cartella:focus-visible .fogli i { translate: 0 -9px; }
-.cartella:active { scale: .985; transition-duration: .15s; }
-.cartella.apre .fronte { transform: rotateX(-46deg); transition-duration: .3s; }
-.cartella.apre .fogli i { translate: 0 -22px; transition-duration: .3s; }
-.notte .cartella { filter: brightness(.74) saturate(.8) drop-shadow(0 1px 1px rgba(0, 0, 0, .5)) drop-shadow(0 9px 9px rgba(0, 0, 0, .45)); }
 #luogo { display: none; font: italic 600 1.3rem/1 var(--scrittura); padding-left: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 [data-vista="bacheca"][data-cartella="1"] #indietro { display: grid; }
 [data-vista="bacheca"][data-cartella="1"] #luogo { display: block; }
@@ -475,6 +435,7 @@ a.tasto { text-decoration: none; color: inherit; }
   #app { position: static; height: auto; } #editor { border: 0; } #foglio { overflow: visible; padding: 0; }
 }
 </style>
+<link rel="stylesheet" href="stile.css">
 </head>
 <body>
 
@@ -511,6 +472,7 @@ a.tasto { text-decoration: none; color: inherit; }
   </header>
 
   <main id="bacheca" aria-label="Bacheca delle note">
+    <section id="plancia" aria-label="Plancia: data, meteo, diario" hidden></section>
     <div id="note"></div>
     <p id="vuoto" hidden></p>
   </main>
@@ -594,6 +556,7 @@ a.tasto { text-decoration: none; color: inherit; }
 <script src="core.js"></script>
 <script src="archivio.js"></script>
 <script src="importa.js"></script>
+<script src="meteo.js"></script>
 <script src="diario.js"></script>
 <script src="cruscotto.js"></script>
 <script src="app.js"></script>

@@ -10,6 +10,8 @@
 | `archivio.js` | **archivio**: lettura e scrittura del repository GitHub (API REST «Git Database»). Nessuna interfaccia |
 | `importa.js` | **importazione**: lettura di file, cartelle e archivi `.zip`, decodifica dei testi. Nessuna interfaccia |
 | `app.js` | **applicazione**: bacheca, editor, archivio locale, sincronizzazione, blocco, importazione |
+| `stile.css` | l'aspetto della bacheca nei due stili (scrivania e terminale): plancia, cartelle, formati dei foglietti |
+| `meteo.js` | **meteo della plancia**: richiesta a Open-Meteo, memoria dell'ultima risposta, icone, ricerca delle località |
 | `diario.js` | **diario alimentare, lettore**: dal Markdown del diario al modello (giorni, pasti, macronutrienti, misure) e agli indicatori. Nessuna interfaccia |
 | `cruscotto.js`, `diario.css` | **diario alimentare, cockpit**: grafici SVG, calendario, giorno; copia locale del file e file ricordato |
 | `config.js` | nome proposto per il repository delle note e cartella; **nessun segreto** |
@@ -168,6 +170,33 @@ minuto), sotto il limite secondario di GitHub (80 al minuto, 500 all'ora).
 Un backup reale di 2.373 note e 26 immagini: lettura ed esame in circa 7 s; 10 commit e 26 oggetti
 per caricare tutto.
 
+## Plancia, meteo, stili (1.8)
+
+**Plancia** (`#plancia`, fuori da `#note`): ridisegnata a ogni `disegna()`, vuota e nascosta dentro una
+cartella e durante la ricerca. Il riquadro del meteo si aggiorna da solo (`aggiornaMeteo`), senza
+ridisegnare la bacheca.
+
+**Meteo** (`meteo.js`). `prendi(luogo)` restituisce la risposta in memoria (`localStorage`,
+`biawrite.meteo`) se ha meno di 30 minuti e le coordinate sono le stesse; altrimenti chiede
+`api.open-meteo.com/v1/forecast` (grandezze `current`, `hourly`, `daily`, due giorni, fuso
+automatico) e riduce la risposta a ciò che la plancia mostra. Se la rete manca torna l'ultima risposta
+con `vecchio: true`. Le località vengono da `geocoding-api.open-meteo.com/v1/search`. La CSP ammette
+solo questi due host oltre a GitHub. Senza `S.meteo` non parte nulla. Le icone sono SVG al tratto
+(24 × 24) disegnate qui, una per famiglia di codici WMO, con la variante notturna per il sereno.
+
+**Cartelle.** Markup: icona (`.ic`, due pseudo-elementi: dorso con linguetta e davanti), nome, conto,
+pallini dei colori. «Fissate» è una cartella virtuale (`data-mese="fissate"`, classe `speciale`):
+`inCartella(n, c)` decide l'appartenenza. Nelle viste a elenco le note fissate hanno una griglia loro
+(`.griglia.fissate`), perché la griglia delle note è a incastro e mescolerebbe le due famiglie.
+
+**Formati.** `formato(n)` dipende solo dal contenuto. La griglia ha righe basse e uguali
+(`grid-auto-rows`) e `grid-auto-flow: dense`: striscia 1 riga, foglietto 2, tabulato 3 (2 se corto),
+scheda 2 righe × 2 colonne.
+
+**Stili.** `html[data-stile]` (messo da `tema.js` prima del disegno). Lo stile terminale ridefinisce
+i gettoni (caratteri tutti su `--fissa`, colori) e poche regole di forma in coda a `stile.css`; nessun
+markup diverso. In stile terminale «tema automatico» significa notte.
+
 ## Bacheca, temi e movimento
 
 **Cartelle dei mesi.** Sono virtuali: nascono a ogni disegno dalla data di nascita della nota
@@ -272,7 +301,7 @@ come testo; le note passano dal motore Markdown e poi dal sanificatore di `core.
 ```sh
 cd tests/e2e
 npm install playwright && npx playwright install chromium
-node prova1.mjs && node prova2.mjs && node prova3.mjs && node prova4.mjs && node prova5.mjs && node prova6.mjs && node prova7.mjs && node prova8.mjs
+node prova1.mjs && node prova2.mjs && node prova3.mjs && node prova4.mjs && node prova5.mjs && node prova6.mjs && node prova7.mjs && node prova8.mjs && node prova9.mjs
 ```
 
 `lib.mjs` contiene un **GitHub simulato** (oggetti git in memoria, ramo con controllo di avanzamento,
@@ -309,6 +338,14 @@ scrittore di archivi zip.
   salvarsi, file messo da fuori); file ricordato (profilo vero del browser); sola lettura (file identico dopo l'uso, nessun permesso di
   scrittura chiesto, nessuna API di scrittura nel sorgente, nessun campo nel cockpit); copia su GitHub
   esclusa e rimessa; file ostile; notte; stampa.
+
+- `prova9.mjs` (51 verifiche): l'aspetto nuovo, con un Open-Meteo finto (`meteoFinto` in `lib.mjs`) —
+  plancia (contenuto, dove compare); meteo (spento senza località, ricerca, dati mostrati, etichetta
+  per la lettura a voce, fonte, sole coordinate arrotondate nella richiesta, CSP, memoria di mezz'ora,
+  rinnovo, ultimo meteo senza rete, errore e «Riprova», tabella dei codici, spegnimento); cartelle
+  (misure, nome sotto, pallini, «Fissate», fila); formati (scelta, proporzioni, caratteri, nessuna
+  sovrapposizione, fila delle fissate); stile terminale (spaziatura fissa, scuro di serie, riga di
+  comando, cartelle a elenco, note dritte, editor, persistenza, variante chiara, ritorno); telefono.
 
 Le prove 1–6 guardano la bacheca «tutte insieme» (`piatta()` in `lib.mjs`); la 7 le cartelle.
 - `prova4.mjs` (17 verifiche): la puntina — ordine in bacheca, ricerca, indice del repository, secondo

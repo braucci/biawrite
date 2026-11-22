@@ -31,7 +31,7 @@ await A.p.click('#menu .voce >> nth=0');
 await pausa(300);
 verifica((await titoli(A.p))[0] === 'Vecchia idea', 'la nota fissata va in testa anche se è la più vecchia', await titoli(A.p));
 verifica(await A.p.locator('.nota.fissata .puntina').count() === 1, 'e porta la puntina');
-verifica(await A.p.locator('.stacco-fissate').count() === 1, 'un piccolo stacco la separa dalle altre');
+verifica(await A.p.locator('#note .griglia.fissate .nota').count() === 1 && await A.p.locator('#note .griglia:not(.fissate) .nota').count() >= 1, 'sta in una fila sua, separata dalle altre');
 await finche(() => G.indice().note['Vecchia idea.md'].fissata === true);
 verifica(G.indice().note['Vecchia idea.md'].fissata === true, 'la puntina è salvata nell\'indice del repository');
 verifica(G.indice().note['Vecchia idea.md'].mod === '2024-03-01T10:00:00.000Z', 'fissare non cambia la data della nota');

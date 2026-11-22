@@ -1,5 +1,18 @@
 # Registro delle modifiche
 
+## 1.8.0 — 22 novembre 2026
+
+- **Aspetto rifatto.** Cartelle piccole come le icone del Finder, con il nome sotto e i colori delle
+  note come pallini. Foglietti ridisegnati e in quattro formati scelti dal contenuto: striscia,
+  foglietto, scheda da schedario, tabulato.
+- **Cartella «Fissate»**: le note con la puntina stanno in una cartella loro, in testa.
+- **Plancia** in testa alla bacheca: data, meteo, diario. Il **diario alimentare** si apre da un
+  pulsante, non più da una cartella fra le note.
+- **Meteo** della località scelta (Open-Meteo): tempo di adesso con icona, temperatura, minima e
+  massima, pioggia, vento, prossime ore, domani. Spento finché non si sceglie una località.
+- **Stile terminale**, in alternativa alla scrivania: tutto a spaziatura fissa, riquadri, cartelle a
+  elenco; scuro di serie, chiaro a richiesta.
+
 ## 1.7.1 — 22 novembre 2026
 
 - **Diario in sola lettura, dichiarato e verificato**: il file si apre esplicitamente in modalità di

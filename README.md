@@ -10,9 +10,9 @@ Si pubblica su GitHub Pages e parla soltanto con GitHub.
 ## Che cosa fa
 
 - **Bacheca** di foglietti scritti a mano, ognuno attaccato a modo suo, con anteprima, colore e ricerca.
-  Le note sono raccolte in **cartelle, una per mese**, divise per anno; con una **puntina** un foglietto
-  resta sempre in testa, fuori dalle cartelle, su tutti i dispositivi. Qualche foglietto porta l'alone
-  di una tazza o la piega di una tasca, come quelli veri.
+  Le note sono raccolte in **cartelle, una per mese**, divise per anno; quelle con la **puntina** stanno
+  anche nella cartella «Fissate», in testa, su tutti i dispositivi. I foglietti hanno quattro formati
+  (striscia, foglietto, scheda, tabulato) e qualcuno porta l'alone di una tazza, come quelli veri.
 - **Giorno e notte**: tema chiaro, scuro o come il dispositivo; tavolo color pastello (salvia, cielo,
   cipria, lavanda, menta) o, per chi li preferisce, i quadretti.
 - **Editor** essenziale: grassetto, corsivo, sottolineato, allineamento (sinistra, centro, destra,
@@ -24,7 +24,11 @@ Si pubblica su GitHub Pages e parla soltanto con GitHub.
   nell'editor di WordPress (o in una mail, in Word…).
 - **Importazione** delle vecchie note: file `.md`, `.txt`, `.html`, cartelle intere, archivi `.zip` e
   **backup di Bear** (`.bear2bk`), con date, puntine e immagini.
-- **Diario alimentare** (modulo facoltativo): una cartella fissa della bacheca che si apre su un
+- **Plancia**: in testa alla bacheca la data, il **meteo** della località scelta (icone chiare, prossime
+  ore, domani) e il pulsante del diario.
+- **Due stili**: *scrivania* (carta, cartelle come nel Finder, riquadri smerigliati) e *terminale*
+  (tutto a spaziatura fissa, cartelle elencate come da `ls -l`), ciascuno di giorno e di notte.
+- **Diario alimentare** (modulo facoltativo): un pulsante della plancia che si apre su un
   cockpit — calorie nel tempo, peso, indicatori, calendario e dettaglio di ogni giorno — ricavato dal
   file `diario-alimentare.md`, che non viene mai modificato.
 - **Blocco del dispositivo** con PIN e, dove il browser lo consente, impronta o volto. Con il blocco
@@ -137,7 +141,7 @@ di Bear, se lasci spuntata la casella relativa.
 
 ## Il diario alimentare
 
-In bacheca, prima degli anni, c'è la cartella **Diario alimentare**. La prima volta chiede il file
+Sulla plancia c'è il pulsante **Diario alimentare**. La prima volta chiede il file
 `diario-alimentare.md`; da lì in poi mostra:
 
 - **Calorie**: una barra per giorno, con la linea della soglia e quella del dispendio stimato; dopo
@@ -192,7 +196,38 @@ repository privato delle note. Come le note, la copia locale non è cifrata.
 - `Passi del giorno …: ≈ 3900` e `Acqua: 500 ml …` nel giorno.
 
 Se i conti del file non tornano (le righe di un pasto non danno il totale scritto), BiaWrite lo
-segnala in alto, senza fermarsi. La cartella si può nascondere da *Impostazioni → Aspetto*.
+segnala in alto, senza fermarsi. Il pulsante si può togliere da *Impostazioni → Aspetto*.
+
+## Aspetto, plancia e meteo
+
+**Plancia.** Sopra la bacheca (non dentro le cartelle né durante la ricerca) tre riquadri: la data con
+il conto delle note, il meteo, il diario alimentare.
+
+**Meteo.** In *Impostazioni → Meteo* si cerca la località per nome, oppure si usa la posizione del
+dispositivo. Il riquadro mostra il tempo di adesso con un'icona, la temperatura, minima e massima,
+probabilità di pioggia, vento, le prossime ore a passi di tre e domani. I dati sono di
+[Open-Meteo](https://open-meteo.com/) (licenza CC BY 4.0), senza chiave: al servizio vanno solo le
+coordinate della località, arrotondate al centesimo di grado (circa un chilometro). Finché non si
+sceglie una località non parte alcuna richiesta. Il meteo si rinnova al più ogni mezz'ora; senza rete
+resta l'ultimo, con l'ora a cui risale. «Nessun meteo» lo spegne.
+
+**Cartelle.** Icone piccole con il nome sotto, come nel Finder; i pallini accanto al nome sono i colori
+delle note che contengono. La prima, gialla e con la puntina, è **Fissate**: raccoglie le note con la
+puntina, che restano anche nella cartella del loro mese.
+
+**Foglietti in quattro formati**, scelti dal contenuto e quindi uguali su ogni dispositivo:
+
+| Formato | Quando | Aspetto |
+|---|---|---|
+| striscia | una riga o due, meno di 90 caratteri | foglietto basso, scritto grande |
+| foglietto | il caso comune | adesivo quasi quadrato, scritto a mano |
+| scheda | più di 650 caratteri o di 14 righe | cartoncino da schedario a righe, largo il doppio; il colore è la costola |
+| tabulato | le note `.txt` | modulo continuo a bande verdi, a spaziatura fissa; il colore è il bordo in alto |
+
+**Stile terminale.** In *Impostazioni → Aspetto → Stile*. Nasce scuro («come il dispositivo» lì vuol
+dire notte); con «Sempre giorno» diventa carta e inchiostro. Le note sono riquadri dritti con il colore
+sul bordo sinistro, le cartelle righe di un elenco, i riquadri della plancia hanno la loro etichetta.
+Vale per tutta l'app: editor, impostazioni, diario.
 
 ## Incollare in WordPress
 
@@ -249,7 +284,7 @@ allineamento o un sottolineato non arrivano, si riapplicano lì con un clic.
 
 - `tests/test.html`, aperto nel browser, verifica il motore di conversione (42 prove);
   `tests/test-diario.html` il lettore del diario alimentare (34 prove).
-- `tests/e2e/` contiene il collaudo dell'intera app con un GitHub simulato (279 verifiche);
+- `tests/e2e/` contiene il collaudo dell'intera app con un GitHub simulato (331 verifiche);
   le istruzioni sono in `README-progetto.md`.
 
 ## Licenza

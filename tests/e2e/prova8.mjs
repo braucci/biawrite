@@ -41,25 +41,25 @@ await finche(async () => (await luogo(p)) !== '', 3000);
 await p.click('#indietro');
 await attendiOk(p);
 
-console.log('A. La cartella fissa nella bacheca');
-const a1 = await p.evaluate(() => ({ n: document.querySelectorAll('#note .raccoglitore').length, mesi: document.querySelectorAll('#note .cartella').length,
-  prima: [...document.querySelectorAll('#note > *')].map(e => e.className.replace('griglia ', '').split(' ').slice(0, 2).join(' ') || e.tagName), etichetta: document.querySelector('.raccoglitore').getAttribute('aria-label') }));
-verifica(a1.n === 1 && a1.mesi === 1, 'una cartella «Diario alimentare», distinta dalle cartelle dei mesi', a1);
-verifica(a1.prima[0] === 'cartelle moduli' && /anno/.test(a1.prima[1]), 'sta in testa, prima degli anni', a1.prima);
-verifica(/tocca per caricare/.test(a1.etichetta), 'finché è vuota lo dice', a1.etichetta);
+console.log('A. Il pulsante del diario sulla plancia');
+const a1 = await p.evaluate(() => ({ n: document.querySelectorAll('#plancia .pl-diario').length, inBacheca: document.querySelectorAll('#note .pl-diario, #note .pl-diario').length, mesi: document.querySelectorAll('#note .cartella:not(.speciale)').length,
+  sopra: !!(document.querySelector('#plancia').compareDocumentPosition(document.querySelector('#note')) & Node.DOCUMENT_POSITION_FOLLOWING), etichetta: document.querySelector('.pl-diario').getAttribute('aria-label'), testo: document.querySelector('.pl-diario').innerText }));
+verifica(a1.n === 1 && a1.inBacheca === 0 && a1.mesi === 1, 'il diario si apre da un pulsante della plancia, non da una cartella fra le note', a1);
+verifica(a1.sopra && /Diario alimentare/.test(a1.testo), 'la plancia sta sopra la bacheca', a1);
+verifica(/tocca per caricare/.test(a1.etichetta), 'finché è vuoto lo dice', a1.etichetta);
 await p.fill('#cerca', 'nota'); await pausa(300);
-verifica(await p.locator('#note .raccoglitore').count() === 0, 'durante la ricerca non compare');
+verifica(await p.locator('#plancia .pl-diario').count() === 0, 'durante la ricerca non compare');
 await p.fill('#cerca', ''); await pausa(300);
 const imp = async fn => { await p.click('#impostazioni'); await p.waitForSelector('#pannello[open]'); await fn(); await p.click('#pannello [data-a="chiudi"]'); await pausa(150); };
 await imp(() => p.selectOption('#ordine', 'tutte'));
-verifica(await p.locator('#note .raccoglitore').count() === 1 && await p.locator('#note .nota').count() === 1, 'c\'è anche nella bacheca «tutte insieme»');
+verifica(await p.locator('#plancia .pl-diario').count() === 1 && await p.locator('#note .nota').count() === 1, 'c\'è anche nella bacheca «tutte insieme»');
 await imp(() => p.selectOption('#mostra-diario', 'no'));
-verifica(await p.locator('#note .raccoglitore').count() === 0, 'chi non la vuole la toglie dalle impostazioni');
+verifica(await p.locator('#plancia .pl-diario').count() === 0, 'chi non la vuole la toglie dalle impostazioni');
 await imp(async () => { await p.selectOption('#mostra-diario', 'si'); await p.selectOption('#ordine', 'mesi'); });
-verifica(await p.locator('#note .raccoglitore').count() === 1, 'e la rimette');
+verifica(await p.locator('#plancia .pl-diario').count() === 1, 'e la rimette');
 
 console.log('B. Dentro: prima il file');
-await p.click('.raccoglitore');
+await p.click('.pl-diario');
 await finche(async () => (await vista(p)) === 'diario', 3000);
 verifica((await luogo(p)) === 'Diario alimentare' && await p.isVisible('#indietro') && !(await p.isVisible('#nuova')) && !(await p.isVisible('#cerca')), 'si apre il diario: titolo, freccia, niente «Nuova nota»');
 verifica(await p.locator('#diario .dz-benvenuto [data-a="aggiorna"]').count() === 1, 'senza diario: l\'invito a caricare il file');
@@ -129,14 +129,14 @@ if (FOTO) { await p.locator('.dz-giorno').scrollIntoViewIfNeeded(); await pausa(
 console.log('E. Uscire e rientrare');
 await p.click('#indietro');
 await finche(async () => (await vista(p)) === 'bacheca', 3000);
-const lab = await p.getAttribute('.raccoglitore', 'aria-label');
-verifica((await luogo(p)) === '' && new RegExp(A1.length + ' giorni').test(lab) && await p.locator('.raccoglitore .rc-foglio rect').count() > 3, 'la freccia riporta alla bacheca; la cartella ora dice quanti giorni contiene e mostra un piccolo grafico', lab);
+const lab = await p.getAttribute('.pl-diario', 'aria-label');
+verifica((await luogo(p)) === '' && new RegExp(A1.length + ' giorni').test(lab) && await p.locator('.pl-diario .pl-graf rect').count() > 3, 'la freccia riporta alla bacheca; il pulsante ora dice quanti giorni contiene e mostra un piccolo grafico', lab);
 await p.goForward(); await finche(async () => (await vista(p)) === 'diario', 3000);
 verifica((await vista(p)) === 'diario', '«avanti» del browser rientra nel diario');
 await p.reload(); await finche(async () => (await p.locator('#diario .dz-andamento').count()) === 1, 6000);
 verifica((await vista(p)) === 'diario' && await p.locator('#diario .dz-andamento').count() === 1, 'ricaricando la pagina si resta nel diario, già caricato');
 await p.keyboard.press('Escape'); await finche(async () => (await vista(p)) === 'bacheca', 3000);
-verifica((await vista(p)) === 'bacheca' && await p.locator('#note .cartella').count() === 1, 'Esc (o «indietro») torna alla bacheca delle note');
+verifica((await vista(p)) === 'bacheca' && await p.locator('#note .cartella:not(.speciale)').count() === 1, 'Esc (o «indietro») torna alla bacheca delle note');
 
 console.log('F. Nel repository privato, e sugli altri dispositivi');
 await attendiOk(p, 15000);
@@ -144,7 +144,7 @@ verifica(G.file().get(PERCORSO) === F1.testo, 'il diario è nel repository, in d
 verifica(G.note().size === 1 && !Object.keys(G.indice().note).some(k => /diario/i.test(k)), 'non è diventato una nota: l\'archivio delle note non cambia', [...G.note().keys()]);
 verifica(G.messaggi()[0] === 'BiaWrite: aggiorna il diario alimentare', 'il salvataggio ha un messaggio leggibile nella cronologia', G.messaggi()[0]);
 const commit0 = G.commitFatti;
-await p.click('.raccoglitore'); await finche(async () => (await vista(p)) === 'diario', 3000);
+await p.click('.pl-diario'); await finche(async () => (await vista(p)) === 'diario', 3000);
 await carica(p, F1.testo);
 await pausa(1500); await attendiOk(p);
 verifica(G.commitFatti === commit0, 'ricaricare lo stesso file non produce un altro salvataggio');
@@ -153,8 +153,8 @@ await senzaFSA(B.ctx); await B.p.reload();
 B.p.on('pageerror', e => errori.push(e.message));
 await collega(B.p, G.repo, BUONA, { tocco: true });
 await attendiOk(B.p, 15000);
-await finche(() => B.p.evaluate(() => /giorni/.test(document.querySelector('.raccoglitore')?.getAttribute('aria-label') || '')), 8000);
-await B.p.tap('.raccoglitore'); await finche(async () => (await B.p.locator('#diario .dz-andamento').count()) === 1, 5000);
+await finche(() => B.p.evaluate(() => /giorni/.test(document.querySelector('.pl-diario')?.getAttribute('aria-label') || '')), 8000);
+await B.p.tap('.pl-diario'); await finche(async () => (await B.p.locator('#diario .dz-andamento').count()) === 1, 5000);
 const b1 = await B.p.evaluate(() => ({ n: BiaCruscotto.modello?.giorni.length, fonte: document.querySelector('.dz-fonte')?.textContent, largo: document.documentElement.scrollWidth <= innerWidth && document.querySelector('#diario').scrollWidth <= document.querySelector('#diario').clientWidth + 1, svg: document.querySelector('[data-grafico="kcal"] svg').getBoundingClientRect().width }));
 verifica(b1.n === A1.length && /ricevuto da GitHub/.test(b1.fonte), 'il telefono riceve il diario da sé, senza caricare alcun file', b1);
 verifica(b1.largo && b1.svg <= 390, 'sul telefono il cockpit sta nello schermo', b1);
@@ -196,14 +196,14 @@ await C.ctx.addInitScript(() => {
   window.showOpenFilePicker = async o => { window.__scelte = (window.__scelte || 0) + 1; window.__modo = (o && o.mode) || 'read'; const d = await navigator.storage.getDirectory(); return [await d.getFileHandle('diario-alimentare.md')]; };
 });
 await C.p.reload();
-await C.p.click('.raccoglitore'); await finche(async () => (await vista(C.p)) === 'diario', 3000);
+await C.p.click('.pl-diario'); await finche(async () => (await vista(C.p)) === 'diario', 3000);
 await C.p.click('#diario [data-a="aggiorna"]');
 await finche(async () => (await C.p.locator('#diario .dz-andamento').count()) === 1, 5000);
 const c1 = await C.p.evaluate(() => ({ n: BiaCruscotto.modello?.giorni.length, tasto: document.querySelector('#diario [data-a="aggiorna"]').textContent, scelte: window.__scelte }));
 verifica(c1.n === A1.length && c1.tasto === 'Rileggi il file' && c1.scelte === 1 && await C.p.evaluate(() => window.__modo) === 'read', 'scelto una volta, il file viene ricordato', c1);
 await pausa(30); await scrivi(F2.testo);
 await C.p.click('#indietro'); await finche(async () => (await vista(C.p)) === 'bacheca', 3000);
-await C.p.click('.raccoglitore');
+await C.p.click('.pl-diario');
 await finche(() => C.p.evaluate(n => BiaCruscotto.modello.giorni.length === n, F2.attesi.length), 5000);
 verifica(await C.p.evaluate(() => BiaCruscotto.modello.giorni.length) === F2.attesi.length && await C.p.evaluate(() => window.__scelte) === 1, 'riaprendo la cartella il diario si rilegge da solo, senza scegliere di nuovo il file');
 await C.p.reload(); await finche(async () => (await C.p.locator('#diario .dz-andamento').count()) === 1, 6000);
@@ -218,7 +218,7 @@ console.log('G2. Sola lettura: BiaWrite non può modificare il diario');
 const leggiFile = () => C.p.evaluate(async () => { const f = await (await (await navigator.storage.getDirectory()).getFileHandle('diario-alimentare.md')).getFile(); return { t: await f.text(), m: f.lastModified, scritture: window.__scritture, permessi: window.__permessi, modo: window.__modo }; });
 const prima = await leggiFile();
 await C.p.click('.dz-cal button.gc >> nth=0'); await C.p.click('#diario [data-a="periodo"][data-v="0"]'); await C.p.click('#diario [data-a="aggiorna"]'); await pausa(300);
-await C.p.click('#indietro'); await finche(async () => (await vista(C.p)) === 'bacheca', 3000); await C.p.click('.raccoglitore'); await finche(async () => (await vista(C.p)) === 'diario', 3000); await pausa(400);
+await C.p.click('#indietro'); await finche(async () => (await vista(C.p)) === 'bacheca', 3000); await C.p.click('.pl-diario'); await finche(async () => (await vista(C.p)) === 'diario', 3000); await pausa(400);
 const dopo = await leggiFile();
 verifica(dopo.t === prima.t && dopo.t === F1.testo && dopo.m === prima.m, 'dopo l\'uso il file è identico: stesso contenuto, stessa data di modifica');
 verifica(dopo.scritture === 0 && dopo.permessi.every(m => m === 'read'), 'l\'app non apre mai il file in scrittura e non ne chiede mai il permesso', { scritture: dopo.scritture, permessi: dopo.permessi });
@@ -230,7 +230,7 @@ await C.ctx.close(); fs.rmSync(profilo, { recursive: true, force: true });
 
 console.log('H. Un file ostile non fa danni');
 const cattivo = F1.testo.replace('| Latte parz. scremato (*) |', '| Latte <img src=x onerror="window.__colpito=1"> <script>window.__colpito=2</script> |').replace('- Bere con regolarità.', '- Bere <a href="javascript:window.__colpito=3">qui</a> <img src=x onerror="window.__colpito=4">.');
-await p.click('.raccoglitore'); await finche(async () => (await vista(p)) === 'diario', 3000);
+await p.click('.pl-diario'); await finche(async () => (await vista(p)) === 'diario', 3000);
 await carica(p, cattivo);
 await finche(() => p.evaluate(() => /onerror/.test(BiaCruscotto.stato().testo)), 4000);
 await pausa(500);
@@ -240,7 +240,7 @@ await carica(p, F1.testo);
 await finche(() => G.file().get(PERCORSO) === F1.testo, 10000); await attendiOk(p);
 
 console.log('H2. La copia su GitHub si può escludere');
-const copia = async v => { await p.click('#indietro'); await finche(async () => (await vista(p)) === 'bacheca', 3000); await imp(() => p.selectOption('#copia-diario', v)); await p.click('.raccoglitore'); await finche(async () => (await vista(p)) === 'diario', 4000); };
+const copia = async v => { await p.click('#indietro'); await finche(async () => (await vista(p)) === 'bacheca', 3000); await imp(() => p.selectOption('#copia-diario', v)); await p.click('.pl-diario'); await finche(async () => (await vista(p)) === 'diario', 4000); };
 await copia('no');
 const commitPrima = G.commitFatti;
 await carica(p, F2.testo);
@@ -257,7 +257,7 @@ await carica(p, F1.testo); await finche(() => G.file().get(PERCORSO) === F1.test
 
 console.log('I. Di notte, e a stampa');
 await imp2('notte');
-async function imp2(tema) { await p.click('#indietro'); await finche(async () => (await vista(p)) === 'bacheca', 3000); await imp(() => p.selectOption('#tema', tema)); await p.click('.raccoglitore'); await finche(async () => (await vista(p)) === 'diario', 4000); await pausa(200); }
+async function imp2(tema) { await p.click('#indietro'); await finche(async () => (await vista(p)) === 'bacheca', 3000); await imp(() => p.selectOption('#tema', tema)); await p.click('.pl-diario'); await finche(async () => (await vista(p)) === 'diario', 4000); await pausa(200); }
 const lum = c => { const m = c.match(/[\d.]+/g).map(Number); return (0.2126 * m[0] + 0.7152 * m[1] + 0.0722 * m[2]) / 255; };
 const nt = await p.evaluate(() => ({ foglio: getComputedStyle(document.querySelector('.dz-foglio')).backgroundColor, testo: getComputedStyle(document.querySelector('.dz-tessera .v')).color, barra: getComputedStyle(document.querySelector('[data-grafico="kcal"] .ba')).fill }));
 verifica(lum(nt.foglio) < 0.2 && lum(nt.testo) > 0.7 && nt.barra === 'rgb(57, 135, 229)', 'in modalità notturna fogli scuri, testo chiaro e colori dei dati scelti per il fondo scuro', nt);

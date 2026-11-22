@@ -3,8 +3,8 @@
  * Con la rete si preferisce sempre la versione pubblicata (gli aggiornamenti arrivano subito);
  * se la rete non risponde entro 3 secondi si usa la copia in cache.
  * Le chiamate a GitHub non passano di qui.                                                    */
-const CACHE = 'biawrite-1.7.1';
-const FILE = ['./', 'index.html', 'tema.js', 'core.js', 'archivio.js', 'importa.js', 'diario.js', 'cruscotto.js', 'diario.css', 'app.js', 'config.js', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png',
+const CACHE = 'biawrite-1.8.0';
+const FILE = ['./', 'index.html', 'tema.js', 'core.js', 'archivio.js', 'importa.js', 'meteo.js', 'diario.js', 'cruscotto.js', 'diario.css', 'stile.css', 'app.js', 'config.js', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png',
   'fonts/kalam-latin-400-normal.woff2', 'fonts/kalam-latin-700-normal.woff2',
   'fonts/ibm-plex-mono-latin-400-normal.woff2', 'fonts/ibm-plex-mono-latin-400-italic.woff2', 'fonts/ibm-plex-mono-latin-700-normal.woff2'];
 

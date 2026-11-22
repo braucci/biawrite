@@ -1,5 +1,5 @@
 /* BiaWrite — tema.js
- * Prima che la pagina si disegni: giorno o notte, e la tinta dello sfondo.
+ * Prima che la pagina si disegni: lo stile (scrivania o terminale), giorno o notte, la tinta dello sfondo.
  * Separato da app.js perché deve agire subito, ed evitare il lampo del tema sbagliato.
  * © B. Raucci — licenza MIT
  */
@@ -10,8 +10,11 @@
   var mq = window.matchMedia ? matchMedia('(prefers-color-scheme: dark)') : null;
   function applica() {
     var tema = S.tema || 'auto';
-    var notte = tema === 'notte' || (tema === 'auto' && !!(mq && mq.matches));
+    var stile = S.stile === 'terminale' ? 'terminale' : 'scrivania';
+    // il terminale nasce scuro: «come il dispositivo» lì vuol dire notte, e il giorno va chiesto
+    var notte = tema === 'notte' || (tema === 'auto' && (stile === 'terminale' || !!(mq && mq.matches)));
     var h = document.documentElement;
+    h.setAttribute('data-stile', stile);
     h.classList.toggle('notte', notte);
     h.setAttribute('data-sfondo', S.sfondo || 'salvia');
     var colore = getComputedStyle(h).getPropertyValue('--tavolo').trim();

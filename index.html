@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<title>BiaWrite</title>
+<meta name="description" content="Appunti e articoli in Markdown, conservati in un repository privato di GitHub.">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://api.github.com; img-src 'self' data: https:; font-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="theme-color" content="#E7ECEC" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1A2123" media="(prefers-color-scheme: dark)">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="BiaWrite">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+/* ------------------------------------------------------------------ gettoni
+   Il tavolo è carta millimetrata; le note sono foglietti adesivi; il foglio
+   su cui si scrive è bianco e basta. Blu e rosso sono quelli della matita
+   bicolore: il blu agisce, il rosso cancella.                              */
+:root {
+  --tavolo: #E7ECEC;  --quadretto: #D6DEDF;  --quadro: #C3CDCF;
+  --foglio: #FDFDFB;  --inchiostro: #1A2224; --tenue: #5C696C;  --filo: #CBD3D4;
+  --blu: #2B4C9B;     --blu-su: #FFFFFF;     --rosso: #B8322A;
+  --ombra: 20, 32, 36;
+  --scrittura: "TeX Gyre Pagella", "Palatino Linotype", Palatino, "Book Antiqua", "URW Palladio L", P052, "Noto Serif", Georgia, serif;
+  --mano: "Kalam", "Bradley Hand", "Segoe Print", "Comic Sans MS", cursive;
+  --grana: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23g)'/%3E%3C/svg%3E");
+  --comandi: "Avenir Next", Avenir, Cantarell, "Segoe UI", "Noto Sans", Roboto, "Helvetica Neue", sans-serif;
+  --giallo: #FFE56A; --arancio: #FFBE73; --rosa: #FFA6BD; --lilla: #CDB9F4;
+  --azzurro: #A5D6F5; --verde: #BBE293; --carta: #FBFAF4; --grigio: #D5DAD7;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --tavolo: #1A2123; --quadretto: #222B2E; --quadro: #2B3639;
+    --foglio: #161B1C; --inchiostro: #E3E6E3; --tenue: #98A4A6; --filo: #323D40;
+    --blu: #9DB4F0;    --blu-su: #0F1A33;    --rosso: #F0938A;
+    --ombra: 0, 0, 0;
+  }
+}
+@font-face { font-family: "Kalam"; font-weight: 400; font-display: swap; src: url("fonts/kalam-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "Kalam"; font-weight: 700; font-display: swap; src: url("fonts/kalam-latin-700-normal.woff2") format("woff2"); }
+*, *::before, *::after { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  font: 15px/1.4 var(--comandi); color: var(--inchiostro); background: var(--tavolo);
+  -webkit-text-size-adjust: 100%; overscroll-behavior: none;
+}
+button, input, textarea, select { font: inherit; color: inherit; }
+button { cursor: pointer; background: none; border: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+[hidden] { display: none !important; }
+:focus-visible { outline: 2px solid var(--blu); outline-offset: 2px; }
+
+/* ------------------------------------------------------------------ impianto */
+#app {
+  position: fixed; left: 0; top: 0; width: 100%; height: var(--alt, 100dvh);
+  display: flex; flex-direction: column;
+}
+#app[data-vista="avvio"] { visibility: hidden; }
+
+#barra {
+  flex: none; display: flex; align-items: center; gap: 6px;
+  padding: calc(6px + env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) 6px max(10px, env(safe-area-inset-left));
+  min-height: 52px;
+}
+#marchio { font: 600 italic 1.35rem/1 var(--scrittura); letter-spacing: -.01em; padding: 0 6px 0 4px; }
+#cerca {
+  flex: 1; min-width: 0; max-width: 26rem; margin-inline: auto; height: 38px; padding: 0 12px;
+  border: 1px solid var(--filo); border-radius: 19px; background: var(--foglio);
+}
+#cerca::placeholder { color: var(--tenue); }
+.icona {
+  flex: none; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 50%;
+}
+.icona:hover, .tasto:hover { background: rgba(var(--ombra), .08); }
+.icona svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+#stato {
+  flex: none; display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 10px 0 9px;
+  border-radius: 16px; font-size: .82rem; color: var(--tenue); white-space: nowrap;
+}
+#stato:hover { background: rgba(var(--ombra), .08); }
+#stato i { width: 8px; height: 8px; border-radius: 50%; background: var(--tenue); }
+#stato[data-s="ok"] i { background: #3C9A5F; }
+#stato[data-s="attesa"] i { background: none; box-shadow: inset 0 0 0 2px #C98A12; }
+#stato[data-s="attesa"] { color: var(--inchiostro); }
+#stato[data-s="lavoro"] i { background: var(--blu); animation: battito 1s ease-in-out infinite; }
+@keyframes battito { 50% { opacity: .25; } }
+
+.tasto {
+  flex: none; height: 36px; padding: 0 12px; border-radius: 18px; font-weight: 600; font-size: .9rem;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.tasto.pieno { background: var(--blu); color: var(--blu-su); }
+.tasto.pieno:hover { background: var(--blu); filter: brightness(1.1); }
+.tasto.bordo { box-shadow: inset 0 0 0 1px var(--filo); }
+.tasto.rosso { color: var(--rosso); }
+.tasto:disabled { opacity: .45; cursor: default; }
+
+[data-vista="bacheca"] :is(#indietro, #copia, #altro, #editor),
+[data-vista="editor"] :is(#marchio, #cerca, #importa, #impostazioni, #bacheca, #nuova) { display: none; }
+[data-vista="editor"] #stato { margin-left: auto; }
+@media (max-width: 560px) {                 /* sul telefono la ricerca scende su una riga sua */
+  [data-vista="bacheca"] #barra { flex-wrap: wrap; row-gap: 4px; }
+  [data-vista="bacheca"] #cerca { order: 9; flex-basis: 100%; max-width: none; margin: 0 2px 2px; }
+  [data-vista="bacheca"] #stato { margin-left: auto; }
+}
+
+/* ------------------------------------------------------------------ bacheca */
+#bacheca {
+  flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  padding: 14px max(12px, env(safe-area-inset-right)) calc(96px + env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  background-color: var(--tavolo);
+  background-image:
+    linear-gradient(var(--quadro) 1px, transparent 1px), linear-gradient(90deg, var(--quadro) 1px, transparent 1px),
+    linear-gradient(var(--quadretto) 1px, transparent 1px), linear-gradient(90deg, var(--quadretto) 1px, transparent 1px);
+  background-size: 100px 100px, 100px 100px, 20px 20px, 20px 20px;
+  background-attachment: local;
+}
+#note { display: grid; grid-template-columns: repeat(auto-fill, minmax(146px, 1fr)); gap: 24px 18px; max-width: 1180px; margin: 0 auto; padding: 8px 4px; }
+@media (min-width: 640px) { #note { grid-template-columns: repeat(auto-fill, minmax(198px, 1fr)); gap: 38px 32px; padding: 10px 8px; } #bacheca { padding-top: 22px; } }
+
+/* Un foglietto vero: quadrato, incollato in alto e un po' storto, con la carta che si
+   solleva in basso (ombra più lunga a sinistra) e un'orecchia piegata nell'angolo destro. */
+.nota {
+  --c: var(--giallo); --r: 0deg; --dx: 0px; --dy: 0px; --e: 20px;
+  position: relative; aspect-ratio: 1; min-width: 0; cursor: pointer;
+  rotate: var(--r); translate: var(--dx) var(--dy); transform-origin: 50% 6%;
+  filter: drop-shadow(0 1px 1px rgba(var(--ombra), .30)) drop-shadow(1px 8px 7px rgba(var(--ombra), .22));
+  transition: rotate .18s, translate .18s, filter .18s;
+}
+.nota::before {
+  content: ""; position: absolute; z-index: -1; left: 3%; bottom: 2%; width: 52%; height: 16%;
+  background: rgba(var(--ombra), .62); filter: blur(6px); rotate: -5deg; translate: -1px 6px; transform-origin: 0 100%;
+}
+.nota:hover, .nota:focus-visible {
+  rotate: 0deg; translate: 0 -3px; z-index: 2;
+  filter: drop-shadow(0 1px 1px rgba(var(--ombra), .30)) drop-shadow(2px 16px 13px rgba(var(--ombra), .30));
+}
+.nota .faccia {
+  position: absolute; inset: 0; overflow: hidden; padding: 17px 14px 6px; color: #1B2224; text-align: left;
+  display: flex; flex-direction: column;
+  font: 400 1.04rem/1.27 var(--mano);
+  background:
+    var(--grana),
+    linear-gradient(166deg, rgba(255, 255, 255, .38) 0%, rgba(255, 255, 255, 0) 28%, rgba(0, 0, 0, 0) 60%, rgba(0, 0, 0, .085) 100%),
+    var(--c);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--e)), calc(100% - var(--e)) 100%, 0 100%);
+}
+.nota .orecchia {                           /* il rovescio dell'angolo piegato */
+  position: absolute; right: 0; bottom: 0; width: var(--e); height: var(--e); pointer-events: none;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--c) 82%, #fff) 0%, color-mix(in srgb, var(--c) 86%, #000) 49%, transparent 50%);
+  filter: drop-shadow(-1.5px -1.5px 1.5px rgba(0, 0, 0, .26));
+}
+[data-colore="giallo"] { --c: var(--giallo); }  [data-colore="arancio"] { --c: var(--arancio); }
+[data-colore="rosa"] { --c: var(--rosa); }      [data-colore="lilla"] { --c: var(--lilla); }
+[data-colore="azzurro"] { --c: var(--azzurro); } [data-colore="verde"] { --c: var(--verde); }
+[data-colore="carta"] { --c: var(--carta); }    [data-colore="grigio"] { --c: var(--grigio); }
+@media (prefers-color-scheme: dark) {
+  .nota { filter: brightness(.86) saturate(.92) drop-shadow(0 1px 1px rgba(0, 0, 0, .5)) drop-shadow(1px 8px 7px rgba(0, 0, 0, .45)); }
+  .nota:hover, .nota:focus-visible { filter: brightness(.9) saturate(.92) drop-shadow(0 1px 1px rgba(0, 0, 0, .5)) drop-shadow(2px 16px 13px rgba(0, 0, 0, .55)); }
+  .campione { filter: brightness(.86) saturate(.92); }
+}
+
+.nota h3 { flex: none; margin: 0 14px 3px 0; font: 700 1.14rem/1.18 var(--mano); overflow-wrap: anywhere; }
+.anteprima {                                /* il testo sfuma prima della data */
+  flex: 1; min-height: 0; overflow: hidden; overflow-wrap: anywhere;
+  -webkit-mask-image: linear-gradient(#000 calc(100% - 1.8em), transparent calc(100% - .2em));
+  mask-image: linear-gradient(#000 calc(100% - 1.8em), transparent calc(100% - .2em));
+}
+.anteprima:first-child > :first-child { margin-right: 14px; }
+.anteprima > :first-child { margin-top: 0; }
+.anteprima :is(p, ul, ol, blockquote, pre, h1, h2, h3, h4, h5, h6) { margin: 0 0 .3em; }
+.anteprima :is(h1, h2, h3, h4, h5, h6) { font-size: 1em; font-weight: 700; }
+.anteprima :is(ul, ol) { padding-left: 1.1em; }
+.anteprima blockquote { padding-left: .55em; border-left: 2px solid rgba(0, 0, 0, .3); }
+.anteprima pre { font: .78em/1.3 ui-monospace, Menlo, Consolas, monospace; white-space: pre-wrap; }
+.anteprima [style*="justify"] { text-align: left !important; }
+.anteprima img { display: none; }
+.anteprima a { color: inherit; pointer-events: none; }
+.anteprima hr { border: 0; border-top: 1px solid rgba(0, 0, 0, .3); }
+.nota footer {
+  flex: none; height: 20px; margin-right: var(--e); display: flex; align-items: center; gap: 6px;
+  font: .72rem var(--comandi); color: rgba(27, 34, 36, .62); white-space: nowrap; overflow: hidden;
+}
+.nota footer .segno { flex: none; width: 7px; height: 7px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px currentColor; }
+.nota .altro {
+  position: absolute; z-index: 2; top: 1px; right: 1px; width: 34px; height: 34px; border-radius: 50%;
+  display: grid; place-items: center; color: rgba(27, 34, 36, .6);
+}
+.nota .altro:hover, .nota .altro:focus-visible { background: rgba(0, 0, 0, .1); color: #1B2224; }
+.nota .altro svg { width: 17px; height: 17px; fill: currentColor; }
+@media (hover: hover) { .nota .altro { opacity: 0; } .nota:hover .altro, .nota:focus-within .altro, .nota .altro:focus-visible { opacity: 1; } }
+
+#vuoto { max-width: 22rem; margin: 18vh auto 0; text-align: center; color: var(--tenue); font: 1.1rem/1.5 var(--scrittura); }
+
+#nuova {
+  position: absolute; right: max(18px, env(safe-area-inset-right)); bottom: calc(18px + env(safe-area-inset-bottom));
+  height: 56px; padding: 0 22px 0 16px; border-radius: 28px; background: var(--blu); color: var(--blu-su);
+  font-weight: 600; display: inline-flex; align-items: center; gap: 8px;
+  box-shadow: 0 2px 4px rgba(var(--ombra), .25), 0 10px 20px -6px rgba(var(--ombra), .45);
+}
+#nuova svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
+#nuova:active { translate: 0 1px; }
+
+/* ------------------------------------------------------------------ editor */
+#editor { flex: 1; min-height: 0; display: flex; flex-direction: column; background: var(--foglio); border-top: 5px solid var(--c, var(--giallo)); }
+@media (prefers-color-scheme: dark) { #editor { border-top-color: color-mix(in srgb, var(--c, var(--giallo)) 80%, #000); } }
+#strumenti {
+  flex: none; display: flex; align-items: center; gap: 1px; padding: 4px max(8px, env(safe-area-inset-left));
+  overflow-x: auto; scrollbar-width: none; border-bottom: 1px solid var(--filo);
+}
+#strumenti::-webkit-scrollbar { display: none; }
+#strumenti button {
+  flex: none; min-width: 40px; height: 40px; border-radius: 8px; display: grid; place-items: center;
+  font: 1.12rem/1 var(--scrittura); color: var(--inchiostro);
+}
+#strumenti button:hover { background: rgba(var(--ombra), .08); }
+#strumenti button[aria-pressed="true"] { background: var(--blu); color: var(--blu-su); }
+#strumenti svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+#strumenti .stacco { flex: none; width: 1px; height: 22px; margin: 0 5px; background: var(--filo); }
+#editor.semplice #strumenti { display: none; }
+
+#foglio { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 0 max(20px, env(safe-area-inset-right)) 40vh max(20px, env(safe-area-inset-left)); }
+#foglio > * { max-width: 41rem; margin-inline: auto; }
+.riga-titolo { display: flex; align-items: baseline; gap: 8px; padding-top: 26px; }
+#titolo {
+  flex: 1; min-width: 0; border: 0; padding: 0; background: none; outline: none;
+  font: 700 1.75rem/1.2 var(--scrittura); letter-spacing: -.012em;
+}
+#titolo::placeholder { color: var(--tenue); opacity: .55; }
+#estensione { font-size: .8rem; color: var(--tenue); }
+#carta, #testo {
+  display: block; width: 100%; min-height: 50vh; margin-top: 14px; outline: none;
+  font: 1.19rem/1.68 var(--scrittura); overflow-wrap: break-word; -webkit-user-select: text; user-select: text;
+}
+#testo { border: 0; padding: 0; background: none; resize: none; overflow: hidden; white-space: pre-wrap; }
+#editor.semplice #carta, #editor:not(.semplice) #testo { display: none; }
+#carta.vuota::before { content: "Scrivi…"; color: var(--tenue); opacity: .6; position: absolute; pointer-events: none; }
+#carta { position: relative; hyphens: auto; }
+#carta > :first-child { margin-top: 0; }
+#carta p { margin: 0 0 .85em; }
+#carta :is(h1, h2, h3, h4, h5, h6) { margin: 1.5em 0 .5em; line-height: 1.22; letter-spacing: -.01em; }
+#carta h1 { font-size: 1.6em; } #carta h2 { font-size: 1.36em; } #carta h3 { font-size: 1.14em; } #carta :is(h4, h5, h6) { font-size: 1em; }
+#carta :is(ul, ol) { margin: 0 0 .85em; padding-left: 1.5em; }
+#carta li > :is(ul, ol) { margin-bottom: 0; }
+#carta blockquote { margin: 0 0 .85em; padding-left: 1em; border-left: 3px solid var(--blu); font-style: italic; }
+#carta blockquote > :last-child { margin-bottom: 0; }
+#carta a { color: var(--blu); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+#carta hr { border: 0; border-top: 1px solid var(--filo); margin: 1.6em 20%; }
+#carta :is(pre, code) { font: .82em/1.5 ui-monospace, "SF Mono", Menlo, "DejaVu Sans Mono", Consolas, monospace; }
+#carta pre { margin: 0 0 1em; padding: .7em .9em; background: rgba(var(--ombra), .07); white-space: pre-wrap; overflow-wrap: anywhere; }
+#carta code { background: rgba(var(--ombra), .08); padding: .08em .3em; }
+#carta img { max-width: 100%; height: auto; }
+
+/* ------------------------------------------------------------------ menu, finestre, avvisi */
+#menu {
+  position: fixed; z-index: 30; min-width: 228px; max-width: calc(100vw - 16px); padding: 6px; border-radius: 12px;
+  background: var(--foglio); box-shadow: 0 0 0 1px var(--filo), 0 14px 34px -8px rgba(var(--ombra), .5);
+}
+#menu button.voce { display: flex; width: 100%; align-items: baseline; gap: 10px; padding: 10px 12px; border-radius: 8px; text-align: left; }
+#menu button.voce:hover { background: rgba(var(--ombra), .08); }
+#menu button.voce small { margin-left: auto; color: var(--tenue); font-size: .78rem; }
+#menu button.voce.rosso { color: var(--rosso); }
+#menu .campioni { display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px; padding: 8px 8px 10px; }
+.campione { aspect-ratio: 1; background: var(--c); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .18); }
+.campione[aria-checked="true"] { box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .18), 0 0 0 2px var(--foglio), 0 0 0 4px var(--blu); }
+#menu hr { border: 0; border-top: 1px solid var(--filo); margin: 4px 0; }
+
+dialog {
+  width: min(30rem, calc(100vw - 24px)); max-height: calc(100dvh - 24px); padding: 0; border: 0; border-radius: 14px;
+  background: var(--foglio); color: var(--inchiostro); box-shadow: 0 24px 60px -12px rgba(var(--ombra), .6);
+}
+dialog::backdrop { background: rgba(10, 16, 18, .5); }
+dialog form, dialog .corpo { padding: 22px; display: flex; flex-direction: column; gap: 14px; }
+dialog h2 { margin: 0; font: 700 1.3rem/1.2 var(--scrittura); }
+dialog h3 { margin: 10px 0 -4px; font-size: .95rem; font-weight: 600; }
+dialog p { margin: 0; line-height: 1.5; }
+dialog .nota-bene { color: var(--tenue); font-size: .88rem; }
+dialog .azioni { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+dialog .fila { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.campo {
+  width: 100%; height: 44px; padding: 0 12px; border: 1px solid var(--filo); border-radius: 8px; background: var(--foglio); outline: none;
+}
+.campo:focus { border-color: var(--blu); box-shadow: 0 0 0 1px var(--blu); }
+select.campo { width: auto; }
+
+#avvisi { position: fixed; z-index: 40; left: 0; right: 0; bottom: calc(22px + env(safe-area-inset-bottom)); display: grid; justify-items: center; gap: 8px; pointer-events: none; }
+.avviso {
+  pointer-events: auto; max-width: min(34rem, calc(100vw - 24px)); padding: 11px 16px; border-radius: 10px;
+  background: var(--inchiostro); color: var(--foglio); font-size: .92rem; box-shadow: 0 8px 22px -6px rgba(var(--ombra), .55);
+}
+
+/* ------------------------------------------------------------------ schermi interi */
+.schermo {
+  position: fixed; inset: 0; z-index: 20; overflow-y: auto; display: grid; place-items: center; padding: 28px 22px;
+  background-color: var(--tavolo);
+  background-image: linear-gradient(var(--quadretto) 1px, transparent 1px), linear-gradient(90deg, var(--quadretto) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+.appeso { width: min(27rem, 100%); rotate: -1.6deg; filter: drop-shadow(0 1px 1px rgba(var(--ombra), .3)) drop-shadow(2px 14px 12px rgba(var(--ombra), .28)); position: relative; }
+.appeso::before {
+  content: ""; position: absolute; z-index: -1; left: 3%; bottom: 1%; width: 46%; height: 12%;
+  background: rgba(var(--ombra), .5); filter: blur(9px); rotate: -3deg; translate: -2px 8px; transform-origin: 0 100%;
+}
+.appeso .orecchia {
+  position: absolute; right: 0; bottom: 0; width: 38px; height: 38px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--giallo) 82%, #fff) 0%, color-mix(in srgb, var(--giallo) 86%, #000) 49%, transparent 50%);
+  filter: drop-shadow(-2px -2px 2px rgba(0, 0, 0, .24));
+}
+.biglietto {
+  padding: 40px 28px 30px; color: #1B2224;
+  background: var(--grana), linear-gradient(166deg, rgba(255, 255, 255, .38) 0%, rgba(255, 255, 255, 0) 28%, rgba(0, 0, 0, 0) 60%, rgba(0, 0, 0, .085) 100%), var(--giallo);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 38px), calc(100% - 38px) 100%, 0 100%);
+  display: flex; flex-direction: column; gap: 14px; --blu: #2B4C9B; --blu-su: #fff; --filo: rgba(0, 0, 0, .28); --tenue: rgba(27, 34, 36, .7); --foglio: #FFFDF0; --rosso: #A32A22;
+}
+@media (prefers-color-scheme: dark) { .appeso { filter: brightness(.9) drop-shadow(0 1px 1px rgba(0, 0, 0, .5)) drop-shadow(2px 14px 12px rgba(0, 0, 0, .5)); } }
+.biglietto h1 { margin: 0; font: 600 italic 2.5rem/1 var(--scrittura); letter-spacing: -.02em; }
+.biglietto p { margin: 0; font: 1.06rem/1.5 var(--scrittura); }
+.biglietto .piccolo { font: .86rem/1.45 var(--comandi); color: var(--tenue); }
+.biglietto .tasto { height: 46px; border-radius: 23px; padding: 0 20px; justify-content: center; }
+.biglietto .campo { color: #1B2224; }
+.biglietto a, .biglietto .filo { color: var(--blu); text-decoration: underline; text-underline-offset: 2px; font-size: .92rem; }
+.biglietto .errore { color: var(--rosso); font: 600 .9rem var(--comandi); min-height: 1.3em; }
+.scossa { animation: scossa .3s; }
+@keyframes scossa { 25% { translate: -6px 0; } 75% { translate: 6px 0; } }
+
+/* benvenuto: passi, etichette */
+.biglietto .passi { margin: 0; padding-left: 1.3em; display: grid; gap: 6px; font: .9rem/1.45 var(--comandi); }
+.biglietto .passi a { font-size: inherit; font-weight: 600; }
+.biglietto .etichetta { font: 600 .82rem var(--comandi); margin-bottom: -8px; }
+.biglietto .filo { align-self: center; }
+.filo { color: var(--blu); text-decoration: underline; text-underline-offset: 2px; font-size: inherit; }
+
+/* importazione */
+#bacheca.trascina { outline: 3px dashed var(--blu); outline-offset: -10px; }
+#bacheca.trascina::after {
+  content: "Lascia qui i file o le cartelle per importarli"; position: fixed; left: 50%; top: 50%; translate: -50% -50%;
+  padding: 16px 22px; border-radius: 12px; background: var(--inchiostro); color: var(--foglio); font-weight: 600; pointer-events: none;
+}
+#vuoto .filo { font: inherit; }
+.spunta { display: flex; align-items: flex-start; gap: 10px; line-height: 1.4; cursor: pointer; }
+.spunta input { width: 18px; height: 18px; margin: 2px 0 0; accent-color: var(--blu); flex: none; }
+.elenco-saltati { font-size: .86rem; color: var(--tenue); }
+.elenco-saltati summary { cursor: pointer; }
+.elenco-saltati ul { margin: 6px 0 0; padding-left: 1.2em; max-height: 9rem; overflow: auto; overflow-wrap: anywhere; }
+dialog a { color: var(--blu); }
+a.tasto { text-decoration: none; color: inherit; }
+
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+@media print {
+  #barra, #strumenti, #nuova, #avvisi, #bacheca { display: none !important; }
+  #app { position: static; height: auto; } #editor { border: 0; } #foglio { overflow: visible; padding: 0; }
+}
+</style>
+</head>
+<body>
+
+<div id="app" data-vista="avvio">
+  <header id="barra">
+    <button id="indietro" class="icona" aria-label="Torna alla bacheca"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <span id="marchio">BiaWrite</span>
+    <input id="cerca" type="search" placeholder="Cerca" aria-label="Cerca nelle note" autocomplete="off">
+    <button id="stato" data-s="locale"><i></i><span></span></button>
+    <button id="copia" class="tasto bordo" title="Copia tutta la nota con la formattazione">Copia</button>
+    <button id="altro" class="icona" aria-label="Colore, nome, elimina" aria-haspopup="menu"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></button>
+    <button id="importa" class="icona" aria-label="Importa note" title="Importa note" aria-haspopup="menu"><svg viewBox="0 0 24 24"><path d="M12 4v10M8 10l4 4 4-4M4 15v3a2 2 0 002 2h12a2 2 0 002-2v-3"/></svg></button>
+    <button id="impostazioni" class="icona" aria-label="Impostazioni"><svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg></button>
+  </header>
+
+  <main id="bacheca" aria-label="Bacheca delle note">
+    <div id="note"></div>
+    <p id="vuoto" hidden></p>
+  </main>
+
+  <main id="editor" aria-label="Nota">
+    <div id="strumenti" role="toolbar" aria-label="Formattazione">
+      <button data-c="bold" aria-label="Grassetto" title="Grassetto"><b>G</b></button>
+      <button data-c="italic" aria-label="Corsivo" title="Corsivo"><i>C</i></button>
+      <button data-c="underline" aria-label="Sottolineato" title="Sottolineato"><u>S</u></button>
+      <span class="stacco"></span>
+      <button data-c="justifyLeft" aria-label="Allinea a sinistra" title="Allinea a sinistra"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 10h10M4 14h16M4 18h10"/></svg></button>
+      <button data-c="justifyCenter" aria-label="Centra" title="Centra"><svg viewBox="0 0 24 24"><path d="M4 6h16M7 10h10M4 14h16M7 18h10"/></svg></button>
+      <button data-c="justifyRight" aria-label="Allinea a destra" title="Allinea a destra"><svg viewBox="0 0 24 24"><path d="M4 6h16M10 10h10M4 14h16M10 18h10"/></svg></button>
+      <button data-c="justifyFull" aria-label="Giustifica" title="Giustifica"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg></button>
+      <span class="stacco"></span>
+      <button data-c="h2" aria-label="Titolo" title="Titolo"><b style="font-size:1.2em">T</b></button>
+      <button data-c="h3" aria-label="Sottotitolo" title="Sottotitolo"><b style="font-size:.9em">T</b></button>
+      <button data-c="insertUnorderedList" aria-label="Elenco puntato" title="Elenco puntato"><svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r=".6"/><circle cx="4.5" cy="12" r=".6"/><circle cx="4.5" cy="18" r=".6"/></svg></button>
+      <button data-c="insertOrderedList" aria-label="Elenco numerato" title="Elenco numerato"><svg viewBox="0 0 24 24"><path d="M10 6h10M10 12h10M10 18h10M4 4.5l1.2-.7v4.4M3.6 14.4c.3-.9 2.6-1 2.6.3 0 .9-1.6 1.4-2.6 2.9h2.8"/></svg></button>
+      <button data-c="quote" aria-label="Citazione" title="Citazione"><svg viewBox="0 0 24 24"><path d="M5 5v14M10 8h10M10 12h10M10 16h6"/></svg></button>
+      <button data-c="link" aria-label="Collegamento" title="Collegamento"><svg viewBox="0 0 24 24"><path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1"/></svg></button>
+      <span class="stacco"></span>
+      <button data-c="removeFormat" aria-label="Togli la formattazione" title="Togli la formattazione"><svg viewBox="0 0 24 24"><path d="M7 5h11M12.5 5l-3 14M5 19h6M15 14l5 5M20 14l-5 5"/></svg></button>
+    </div>
+    <div id="foglio">
+      <div class="riga-titolo">
+        <input id="titolo" type="text" placeholder="Titolo" aria-label="Titolo della nota" autocomplete="off" enterkeyhint="next">
+        <span id="estensione">.md</span>
+      </div>
+      <div id="carta" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Testo della nota" spellcheck="true" lang="it"></div>
+      <textarea id="testo" aria-label="Testo della nota" spellcheck="true" lang="it" placeholder="Scrivi…"></textarea>
+    </div>
+  </main>
+
+  <button id="nuova" aria-label="Nuova nota"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Nuova nota</button>
+</div>
+
+<section id="benvenuto" class="schermo" hidden>
+  <div class="appeso"><form class="biglietto" id="modulo-collega" autocomplete="off" novalidate>
+    <h1>BiaWrite</h1>
+    <p>Appunti e articoli, scritti qui e conservati in un tuo repository privato su GitHub.</p>
+    <ol class="passi">
+      <li><a id="link-repo" href="https://github.com/new" target="_blank" rel="noopener">Crea il repository privato</a> per le note: è già tutto compilato, basta «Create repository».</li>
+      <li><a id="link-chiave" href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">Crea la chiave</a>: in «Repository access» scegli «Only select repositories» e indica il repository delle note, poi «Generate token» e copia la chiave.</li>
+      <li>Incollala qui sotto.</li>
+    </ol>
+    <label class="etichetta" for="campo-repo">Repository delle note</label>
+    <input id="campo-repo" class="campo" type="text" placeholder="biawrite-note" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <label class="etichetta" for="campo-chiave">Chiave</label>
+    <input id="campo-chiave" class="campo" type="password" placeholder="github_pat_…" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <button id="collega" class="tasto pieno" type="submit">Collega GitHub</button>
+    <p id="errore-collega" class="errore" role="alert"></p>
+    <p class="piccolo">La chiave resta su questo dispositivo, cifrata se imposti un PIN, e apre soltanto il repository che hai scelto. Non c'è nessun server: tutto avviene tra questo browser e GitHub.</p>
+    <button id="solo-locale" class="filo" type="button">Prova senza GitHub, solo su questo dispositivo</button>
+  </form><i class="orecchia"></i></div>
+</section>
+
+<section id="blocco" class="schermo" hidden>
+  <div class="appeso"><form class="biglietto" id="modulo-blocco" autocomplete="off">
+    <h1>BiaWrite</h1>
+    <p>Le note sono chiuse su questo dispositivo.</p>
+    <input id="campo-pin" class="campo" type="password" placeholder="PIN" aria-label="PIN" autocomplete="off" enterkeyhint="go">
+    <button class="tasto pieno" type="submit">Apri</button>
+    <button id="biometria" class="tasto bordo" type="button" hidden>Usa impronta o volto</button>
+    <p id="errore-pin" class="errore" role="alert"></p>
+    <button id="pin-perso" class="filo" type="button">PIN dimenticato</button>
+  </form><i class="orecchia"></i></div>
+</section>
+
+<input type="file" id="scegli-file" multiple accept=".md,.markdown,.mdown,.mkd,.txt,.text,.html,.htm,.zip,text/markdown,text/plain,text/html,application/zip" hidden>
+<input type="file" id="scegli-cartella" webkitdirectory multiple hidden>
+<dialog id="finestra"><form method="dialog" id="finestra-corpo"></form></dialog>
+<dialog id="pannello"><div class="corpo" id="pannello-corpo"></div></dialog>
+<div id="menu" role="menu" hidden></div>
+<div id="avvisi" aria-live="polite"></div>
+
+<script src="config.js"></script>
+<script src="core.js"></script>
+<script src="archivio.js"></script>
+<script src="importa.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
